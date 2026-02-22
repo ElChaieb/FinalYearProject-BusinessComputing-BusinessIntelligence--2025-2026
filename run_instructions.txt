@@ -1,0 +1,39 @@
+# Setup and Run Instructions
+
+## Backend
+1. Create a virtual environment (optional but recommended):
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate   # Windows
+   source venv/bin/activate    # macOS/Linux
+   ```
+2. Install required Python packages (listed in requirements.txt):
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the development server using Uvicorn:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+## Frontend
+1. Install Node.js and npm if not already installed.
+2. From the `app_frontend` directory, install dependencies:
+   ```bash
+   npm install
+   ```
+3. Ensure you have Tailwind CSS configured (should already be in project).
+   If setting up from scratch, install Tailwind and initialize:
+   ```bash
+   npm install -D tailwindcss postcss autoprefixer
+   npx tailwindcss init -p
+   ```
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## First-time Setup Summary
+- Backend: Python 3.x, virtual environment, `pip install -r requirements.txt`
+- Frontend: Node.js, npm, run `npm install`, and ensure Tailwind dependencies are present.
+- Optional tools: Git, a code editor like VS Code.
