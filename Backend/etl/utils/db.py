@@ -1,4 +1,4 @@
--- etl/utils/db.py
+# etl/utils/db.py
 import psycopg2
 from psycopg2.extras import execute_values
 import os
