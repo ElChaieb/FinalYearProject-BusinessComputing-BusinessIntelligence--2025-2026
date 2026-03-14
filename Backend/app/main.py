@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Depends
 from app.routers import auth
 from app.auth import get_current_user, require_role
+from app.routers import admin
+
 
 app = FastAPI()
-## TEMPORARY:
+app.include_router(admin.router)
 
+## TEMPORARY:
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(

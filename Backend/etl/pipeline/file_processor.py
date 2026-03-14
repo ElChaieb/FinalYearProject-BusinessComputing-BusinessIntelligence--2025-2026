@@ -12,9 +12,13 @@ from etl.utils.logger import logger
 OP_SHEET    = "OP"
 DEVIS_SHEET = "DEVIS"
 
+# Base directory = Backend/
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_DIR  = os.path.join(BASE_DIR, "etl", "raw")
+
 
 def extract_agency_name(filepath: str) -> str:
-    """Extract agency name from filename e.g. 'CRM AYDA-GABES.xlsx' → 'Gabes'"""
+    """Extract agency name from filename e.g. 'CRM AYDA-GABES.xlsx' -> 'Gabes'"""
     basename = os.path.basename(filepath).replace(".xlsx", "")
     match = re.search(r'-(.+)$', basename)
     return match.group(1).strip().title() if match else "Unknown"
@@ -31,43 +35,52 @@ def process_file(filepath: str) -> dict:
     logger.info(f"=== Processing file: {filename} ===")
 
     report = {
-        "file": filename,
-        "agency": None,
+        "file":          filename,
+        "agency":        None,
         "users":         {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
         "vehicles":      {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
         "opportunities": {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
         "quotes":        {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
-        "status": "success",
-        "error": None
+        "status":        "success",
+        "error":         None
     }
 
+    # Resolve absolute path if relative given
+    if not os.path.isabs(filepath):
+        filepath = os.path.join(BASE_DIR, filepath)
+
+    if not os.path.exists(filepath):
+        report["status"] = "failed"
+        report["error"]  = f"File not found: {filepath}"
+        logger.error(report["error"])
+        return report
+
     try:
-        # ── Load sheets ──────────────────────────────────────────
+        # Load sheets
         df_op = pd.read_excel(filepath, sheet_name=OP_SHEET, engine="calamine")
         logger.info(f"  OP sheet loaded: {len(df_op)} rows")
 
         df_devis = pd.read_excel(filepath, sheet_name=DEVIS_SHEET, engine="calamine")
         logger.info(f"  DEVIS sheet loaded: {len(df_devis)} rows")
 
-        # ── Agency ───────────────────────────────────────────────
+        # Agency
         agency_name = extract_agency_name(filepath)
         agency_id   = get_or_create_agency(agency_name)
         report["agency"] = agency_name
         logger.info(f"  Agency: {agency_name} (id={agency_id})")
 
-        # Source label for fact tables
         source = agency_name.lower().replace(" ", "_")
 
-        # ── Users ────────────────────────────────────────────────
+        # Users
         report["users"] = parse_and_load_users(df_op, agency_id)
 
-        # ── Vehicles ─────────────────────────────────────────────
+        # Vehicles
         report["vehicles"] = parse_and_load_vehicles(df_devis)
 
-        # ── Opportunities ────────────────────────────────────────
+        # Opportunities
         report["opportunities"] = parse_and_load_opportunities(df_op, agency_id, source)
 
-        # ── Quotes ───────────────────────────────────────────────
+        # Quotes
         report["quotes"] = parse_and_load_quotes(df_devis, agency_id, source)
 
         logger.info(f"=== Done: {filename} ===")
@@ -76,6 +89,21 @@ def process_file(filepath: str) -> dict:
         report["status"] = "failed"
         report["error"]  = str(e)
         logger.error(f"Pipeline failed for {filename}: {e}")
+    
+    #Cleaning the \raw folder
+    processed_dir = os.path.join(BASE_DIR, "etl", "processed")
+    rejected_dir  = os.path.join(BASE_DIR, "etl", "rejected")
+    os.makedirs(processed_dir, exist_ok=True)
+    os.makedirs(rejected_dir,  exist_ok=True)
+
+    if report["status"] == "success":
+        dest = os.path.join(processed_dir, filename)
+        os.rename(filepath, dest)
+        logger.info(f"Moved to processed/: {filename}")
+    else:
+        dest = os.path.join(rejected_dir, filename)
+        os.rename(filepath, dest)
+        logger.info(f"Moved to rejected/: {filename}")
 
     return report
 
@@ -83,3 +111,14 @@ def process_file(filepath: str) -> dict:
 def process_multiple_files(filepaths: list) -> list:
     """Process a list of xlsx files and return a list of reports."""
     return [process_file(fp) for fp in filepaths]
+
+
+def process_all_raw_files() -> list:
+    """Process all xlsx files currently in etl/raw/ folder."""
+    files = [
+        os.path.join(RAW_DIR, f)
+        for f in os.listdir(RAW_DIR)
+        if f.endswith(".xlsx") and not f.startswith("~$")
+    ]
+    logger.info(f"Found {len(files)} file(s) in raw folder")
+    return process_multiple_files(files)
