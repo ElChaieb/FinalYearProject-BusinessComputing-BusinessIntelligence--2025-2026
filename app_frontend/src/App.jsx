@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import DataManagement from "./pages/DataManagement";
 
 export default function App() {
   return (
@@ -22,6 +23,9 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/login" />} />
+          <Route path="/data" element={
+          <ProtectedRoute allowedRoles={["Administrateur BI"]}> <DataManagement />  </ProtectedRoute>
+        } />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -2,8 +2,18 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const navItems = [
-  { label: "Dashboard", path: "/dashboard", roles: ["Administrateur BI", "Directeur Marketing", "Responsable d'Agence", "Commercial"] },
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+    roles: [
+      "Administrateur BI",
+      "Directeur Marketing",
+      "Responsable d'Agence",
+      "Commercial",
+    ],
+  },
   { label: "Admin Panel", path: "/admin", roles: ["Administrateur BI"] },
+  { label: "Data Management", path: "/data", roles: ["Administrateur BI"] },
 ];
 
 export default function Sidebar() {

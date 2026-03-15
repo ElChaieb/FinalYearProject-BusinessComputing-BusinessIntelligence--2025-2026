@@ -8,17 +8,20 @@ from etl.utils.logger import logger
 def parse_and_load_quotes(df_devis: pd.DataFrame, agency_id: int, source: str) -> dict:
     """
     Extract quotes from DEVIS sheet and insert into fact_quotes.
-    Skips quotes that already exist by quote_id.
+    One row per (quote_id_crm + vehicle) combination.
+    Skips if (quote_id_crm, vehicle_id) already exists.
     Returns a report dict.
     """
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
-    required = ['Quot_QuoteId']
+    required = ['Quot_OrderQuoteID']
     if not all(c in df_devis.columns for c in required):
-        logger.warning("Missing Quot_QuoteId in DEVIS sheet — skipping quotes")
+        logger.warning(f"Missing Quot_OrderQuoteID in DEVIS sheet — skipping quotes")
+        logger.warning(f"Available columns: {list(df_devis.columns)}")
         return report
 
-    df = df_devis.dropna(subset=['Quot_QuoteId']).drop_duplicates(subset=['Quot_QuoteId']).copy()
+    # Keep all rows (no dedup by quote ID alone — one quote can have multiple vehicles)
+    df = df_devis.dropna(subset=['Quot_OrderQuoteID']).copy()
     df['Quot_CreatedDate'] = pd.to_datetime(df.get('Quot_CreatedDate'), dayfirst=True, errors='coerce')
     report["total"] = len(df)
 
@@ -27,10 +30,21 @@ def parse_and_load_quotes(df_devis: pd.DataFrame, agency_id: int, source: str) -
 
     try:
         for _, row in df.iterrows():
-            quote_id = str(row['Quot_QuoteId']).strip()
+            quote_id_crm = str(row['Quot_OrderQuoteID']).strip()
 
-            # Skip if already exists
-            cur.execute("SELECT quote_id FROM fact_quotes WHERE quote_id = %s", (quote_id,))
+            # Resolve vehicle_id from AR_Ref
+            ar_ref = str(row.get('AR_Ref', '') or '').strip()
+            vehicle_id = None
+            if ar_ref:
+                cur.execute("SELECT vehicle_id FROM dim_vehicle WHERE ar_ref = %s", (ar_ref,))
+                v_row = cur.fetchone()
+                vehicle_id = v_row[0] if v_row else None
+
+            # Skip if (quote_id_crm, vehicle_id) already exists
+            cur.execute(
+                "SELECT 1 FROM fact_quotes WHERE quote_id_crm = %s AND vehicle_id = %s",
+                (quote_id_crm, vehicle_id)
+            )
             if cur.fetchone():
                 report["skipped"] += 1
                 continue
@@ -38,8 +52,8 @@ def parse_and_load_quotes(df_devis: pd.DataFrame, agency_id: int, source: str) -
             # Resolve date_id
             date_id = get_or_create_date(row.get('Quot_CreatedDate'))
 
-            # Resolve user_id from crm_user_id
-            crm_user_id = row.get('Oppo_AssignedUserId')
+            # Resolve user_id from User_UserId
+            crm_user_id = row.get('User_UserId')
             user_id = None
             if crm_user_id and not pd.isna(crm_user_id):
                 cur.execute(
@@ -49,23 +63,16 @@ def parse_and_load_quotes(df_devis: pd.DataFrame, agency_id: int, source: str) -
                 user_row = cur.fetchone()
                 user_id = user_row[0] if user_row else None
 
-            # Resolve vehicle_id from ar_ref
-            ar_ref = str(row.get('AR_Ref', '') or '').strip()
-            vehicle_id = None
-            if ar_ref:
-                cur.execute("SELECT vehicle_id FROM dim_vehicle WHERE ar_ref = %s", (ar_ref,))
-                v_row = cur.fetchone()
-                vehicle_id = v_row[0] if v_row else None
-
-            oppo_id = str(row.get('Oppo_OpportunityId', '') or '').strip() or None
+            # Opportunity ID
+            oppo_id = str(row.get('Quot_opportunityid', '') or '').strip() or None
 
             cur.execute("""
                 INSERT INTO fact_quotes
-                    (quote_id, date_id, user_id, agency_id, vehicle_id,
+                    (quote_id_crm, date_id, user_id, agency_id, vehicle_id,
                      oppo_id, converted_to_sale, source)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                quote_id, date_id, user_id, agency_id, vehicle_id,
+                quote_id_crm, date_id, user_id, agency_id, vehicle_id,
                 oppo_id, False, source
             ))
             report["inserted"] += 1

@@ -1,34 +1,49 @@
 # etl/pipeline/file_processor.py
 import os
 import re
+import shutil
 import pandas as pd
+from datetime import datetime
 from etl.pipeline.parsers.parse_agency import get_or_create_agency
 from etl.pipeline.parsers.parse_users import parse_and_load_users
 from etl.pipeline.parsers.parse_vehicles import parse_and_load_vehicles
 from etl.pipeline.parsers.parse_opportunities import parse_and_load_opportunities
 from etl.pipeline.parsers.parse_quotes import parse_and_load_quotes
 from etl.utils.logger import logger
+from dotenv import load_dotenv
 
 OP_SHEET    = "OP"
 DEVIS_SHEET = "DEVIS"
 
-# Base directory = Backend/
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RAW_DIR  = os.path.join(BASE_DIR, "etl", "raw")
+load_dotenv()
+BASE_DIR      = os.getenv("BASE_DIR")
+RAW_DIR       = os.path.join(BASE_DIR, "etl", "raw")
+PROCESSED_DIR = os.path.join(BASE_DIR, "etl", "processed")
+REJECTED_DIR  = os.path.join(BASE_DIR, "etl", "rejected")
 
 
 def extract_agency_name(filepath: str) -> str:
-    """Extract agency name from filename e.g. 'CRM AYDA-GABES.xlsx' -> 'Gabes'"""
+    """Extract agency name from filename e.g. 'CRM foulen-GABES.xlsx' -> 'Gabes'"""
     basename = os.path.basename(filepath).replace(".xlsx", "")
     match = re.search(r'-(.+)$', basename)
     return match.group(1).strip().title() if match else "Unknown"
+
+
+def move_file(filepath: str, destination_dir: str) -> str:
+    """Move file to destination folder with timestamp to avoid collisions."""
+    filename  = os.path.basename(filepath)
+    basename  = os.path.splitext(filename)[0]
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    new_name  = f"{basename}_{timestamp}.xlsx"
+    dest_path = os.path.join(destination_dir, new_name)
+    shutil.move(filepath, dest_path)
+    return new_name
 
 
 def process_file(filepath: str) -> dict:
     """
     Main entry point. Processes a single xlsx file and loads
     all data into the PostgreSQL Data Warehouse.
-
     Returns a full quality report.
     """
     filename = os.path.basename(filepath)
@@ -89,21 +104,17 @@ def process_file(filepath: str) -> dict:
         report["status"] = "failed"
         report["error"]  = str(e)
         logger.error(f"Pipeline failed for {filename}: {e}")
-    
-    #Cleaning the \raw folder
-    processed_dir = os.path.join(BASE_DIR, "etl", "processed")
-    rejected_dir  = os.path.join(BASE_DIR, "etl", "rejected")
-    os.makedirs(processed_dir, exist_ok=True)
-    os.makedirs(rejected_dir,  exist_ok=True)
+
+    # Move file after processing
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    os.makedirs(REJECTED_DIR,  exist_ok=True)
 
     if report["status"] == "success":
-        dest = os.path.join(processed_dir, filename)
-        os.rename(filepath, dest)
-        logger.info(f"Moved to processed/: {filename}")
+        new_name = move_file(filepath, PROCESSED_DIR)
+        logger.info(f"Moved to processed/: {new_name}")
     else:
-        dest = os.path.join(rejected_dir, filename)
-        os.rename(filepath, dest)
-        logger.info(f"Moved to rejected/: {filename}")
+        new_name = move_file(filepath, REJECTED_DIR)
+        logger.info(f"Moved to rejected/: {new_name}")
 
     return report
 
