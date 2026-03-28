@@ -1,95 +1,107 @@
 # etl/pipeline/parsers/parse_users.py
+"""
+Extracts unique commercials from OP + DEVIS and loads them into dim_user.
+
+Resolution priority (per row):
+  1. crm_user_id  (Oppo_AssignedUserId / User_UserId) — reliable, preferred
+  2. (last_name, first_name, agency_id) — fallback when User_UserId absent in DEVIS
+
+Since one file can contain multiple commercials, every row is processed
+individually and deduplicated before the DB write.
+"""
 import pandas as pd
 from etl.utils.db import get_connection
 from etl.utils.logger import logger
 
 
 def parse_and_load_users(df_op: pd.DataFrame, df_devis: pd.DataFrame, agency_id: int) -> dict:
-    """
-    Extract unique users from both OP and DEVIS sheets and insert into dim_user.
-    OP sheet   -> Oppo_AssignedUserId, User_LastName, User_FirstName, User_EmailAddress
-    DEVIS sheet -> User_UserId, User_LastName, User_FirstName
-    Merges both sources, deduplicates by crm_user_id.
-    Skips users that already exist.
-    Returns a report dict.
-    """
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
-    users_combined = []
+    users: dict[int, dict] = {}  # crm_user_id → user data, deduped in memory
 
-    # From OP sheet
-    op_id_col = 'Oppo_AssignedUserId'
-    if op_id_col in df_op.columns:
-        op_users = df_op[
-            [c for c in [op_id_col, 'User_LastName', 'User_FirstName', 'User_EmailAddress']
-             if c in df_op.columns]
-        ].copy()
-        op_users = op_users.rename(columns={op_id_col: 'crm_user_id'})
-        op_users = op_users.dropna(subset=['crm_user_id'])
-        users_combined.append(op_users)
-        logger.info(f"  OP sheet: {len(op_users)} user rows found")
-    else:
-        logger.warning("Oppo_AssignedUserId not found in OP sheet — skipping OP users")
+    # ── From OP sheet (always has Oppo_AssignedUserId — it's required) ───────
+    for _, row in df_op.iterrows():
+        uid = _safe_int(row.get("Oppo_AssignedUserId"))
+        if uid is None:
+            continue
+        if uid not in users:
+            users[uid] = {
+                "crm_user_id": uid,
+                "last_name":   _clean(row.get("User_LastName")),
+                "first_name":  _clean(row.get("User_FirstName")),
+                "email":       _clean_lower(row.get("User_EmailAddress")),
+            }
 
-    # From DEVIS sheet
-    devis_id_col = 'User_UserId'
-    if devis_id_col in df_devis.columns:
-        devis_users = df_devis[
-            [c for c in [devis_id_col, 'User_LastName', 'User_FirstName']
-             if c in df_devis.columns]
-        ].copy()
-        devis_users = devis_users.rename(columns={devis_id_col: 'crm_user_id'})
-        devis_users = devis_users.dropna(subset=['crm_user_id'])
-        users_combined.append(devis_users)
-        logger.info(f"  DEVIS sheet: {len(devis_users)} user rows found")
-    else:
-        logger.warning("User_UserId not found in DEVIS sheet — skipping DEVIS users")
+    # ── From DEVIS sheet ──────────────────────────────────────────────────────
+    has_user_id = "User_UserId" in df_devis.columns
 
-    if not users_combined:
-        logger.warning("No user data found in either sheet — skipping users")
+    if not has_user_id:
+        logger.warning(
+            "DEVIS missing 'User_UserId' — will attempt name-based "
+            "lookup for quote user resolution (no new users inserted from DEVIS)."
+        )
+
+    if has_user_id:
+        for _, row in df_devis.iterrows():
+            uid = _safe_int(row.get("User_UserId"))
+            if uid is None:
+                continue
+            if uid not in users:
+                users[uid] = {
+                    "crm_user_id": uid,
+                    "last_name":   _clean(row.get("User_LastName")),
+                    "first_name":  _clean(row.get("User_FirstName")),
+                    "email":       None,  # DEVIS has no email column
+                }
+
+    report["total"] = len(users)
+    if not users:
+        logger.warning("No user data found — skipping users.")
         return report
 
-    # Merge + deduplicate
-    merged = pd.concat(users_combined, ignore_index=True)
-    merged['crm_user_id'] = merged['crm_user_id'].astype(int)
-    merged = merged.drop_duplicates(subset=['crm_user_id'], keep='first')
-    report["total"] = len(merged)
-
     conn = get_connection()
-    cur = conn.cursor()
-
+    cur  = conn.cursor()
     try:
-        cur.execute("SELECT name, region FROM dim_agency WHERE agency_id = %s", (agency_id,))
+        cur.execute(
+            "SELECT name, region FROM dim_agency WHERE agency_id = %s", (agency_id,)
+        )
         agency_row  = cur.fetchone()
         agency_name = agency_row[0] if agency_row else None
         region      = agency_row[1] if agency_row else None
 
-        for _, row in merged.iterrows():
-            crm_user_id = int(row['crm_user_id'])
-
-            cur.execute("SELECT user_id FROM dim_user WHERE crm_user_id = %s", (crm_user_id,))
+        for user in users.values():
+            cur.execute(
+                "SELECT user_id FROM dim_user WHERE crm_user_id = %s",
+                (user["crm_user_id"],),
+            )
             if cur.fetchone():
                 report["skipped"] += 1
                 continue
 
-            last_name  = str(row.get('User_LastName',  '') or '').strip().title()
-            first_name = str(row.get('User_FirstName', '') or '').strip().title()
-            email      = str(row.get('User_EmailAddress', '') or '').strip().lower()
-
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO dim_user
                     (crm_user_id, last_name, first_name, email, role,
                      agency_id, agency_name, region)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                crm_user_id, last_name, first_name, email,
-                'Commercial', agency_id, agency_name, region
-            ))
+                """,
+                (
+                    user["crm_user_id"],
+                    user["last_name"],
+                    user["first_name"],
+                    user["email"],
+                    "Commercial",
+                    agency_id,
+                    agency_name,
+                    region,
+                ),
+            )
             report["inserted"] += 1
 
         conn.commit()
-        logger.info(f"Users — inserted: {report['inserted']}, skipped: {report['skipped']}")
-
+        logger.info(
+            f"Users — inserted: {report['inserted']}, skipped: {report['skipped']}"
+        )
     except Exception as e:
         conn.rollback()
         logger.error(f"Error loading users: {e}")
@@ -100,3 +112,45 @@ def parse_and_load_users(df_op: pd.DataFrame, df_devis: pd.DataFrame, agency_id:
         conn.close()
 
     return report
+
+
+def resolve_user_id_by_name(cur, last_name: str, first_name: str, agency_id: int):
+    """
+    Fallback: resolve dim_user.user_id by (last_name, first_name, agency_id).
+    Used when DEVIS is missing User_UserId.
+    Returns user_id or None.
+    """
+    cur.execute(
+        """
+        SELECT user_id FROM dim_user
+        WHERE UPPER(last_name)  = UPPER(%s)
+          AND UPPER(first_name) = UPPER(%s)
+          AND agency_id = %s
+        LIMIT 1
+        """,
+        (last_name, first_name, agency_id),
+    )
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def _safe_int(val):
+    try:
+        return int(val) if val is not None and not (
+            isinstance(val, float) and pd.isna(val)
+        ) else None
+    except (ValueError, TypeError):
+        return None
+
+
+def _clean(val) -> str | None:
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    return str(val).strip().title() or None
+
+
+def _clean_lower(val) -> str | None:
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return None
+    return str(val).strip().lower() or None
