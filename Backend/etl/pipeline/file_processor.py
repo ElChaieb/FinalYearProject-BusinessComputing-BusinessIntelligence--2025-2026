@@ -87,7 +87,7 @@ def process_file(filepath: str) -> dict:
         source = agency_name.lower().replace(" ", "_")
 
         # Users
-        report["users"] = parse_and_load_users(df_op, agency_id)
+        report["users"] = parse_and_load_users(df_op, df_devis, agency_id)
 
         # Vehicles
         report["vehicles"] = parse_and_load_vehicles(df_devis)
