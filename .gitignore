@@ -26,3 +26,4 @@ Backend/etl/rejected/
 Backend/etl/raw/
 Backend/etl/processed/
 New folder/
+*.xlsx

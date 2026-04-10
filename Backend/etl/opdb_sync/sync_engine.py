@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ── Connection helpers ───────────────────────────────────────
+# ── Connection helpers ────────────────────────────────────────
 
 def get_opdb_connection() -> pyodbc.Connection:
     server   = os.getenv("OPDB_SERVER",   "localhost")
@@ -39,15 +39,15 @@ def get_opdb_connection() -> pyodbc.Connection:
 
 def get_dwh_connection() -> psycopg2.extensions.connection:
     return psycopg2.connect(
-        host=os.getenv("DWH_HOST",     "localhost"),
-        port=int(os.getenv("DWH_PORT", "5432")),
-        dbname=os.getenv("DWH_NAME",   "warehouse_db"),
-        user=os.getenv("DWH_USER",     "admin"),
+        host=os.getenv("DWH_HOST",         "localhost"),
+        port=int(os.getenv("DWH_PORT",     "5432")),
+        dbname=os.getenv("DWH_NAME",       "warehouse_db"),
+        user=os.getenv("DWH_USER",         "admin"),
         password=os.getenv("DWH_PASSWORD", "admin"),
     )
 
 
-# ── Helpers ──────────────────────────────────────────────────
+# ── Helper ────────────────────────────────────────────────────
 
 def _get_max_id(dwh_cur, table: str, id_col: str) -> int:
     """Returns max(id_col) in the DWH table, or 0 if empty."""
@@ -58,32 +58,57 @@ def _get_max_id(dwh_cur, table: str, id_col: str) -> int:
 # ── Per-table sync functions ──────────────────────────────────
 
 def _sync_users(opdb_cur, dwh_cur) -> dict:
-    max_id = _get_max_id(dwh_cur, "dim_user", "user_id")
+    """
+    Op DB  : users(user_id, crm_user_id, last_name, first_name, email, role, is_active)
+    DWH    : dim_user(user_id SERIAL, crm_user_id, last_name, first_name, email, role,
+                      agency_id, agency_name, region)
+    Key    : crm_user_id  (UNIQUE in both)
+    Note   : agency_id / agency_name / region are not in Op DB — set to NULL/Undetermined
+    """
+    # Get crm_user_ids already in DWH
+    dwh_cur.execute("SELECT crm_user_id FROM dim_user WHERE crm_user_id IS NOT NULL")
+    existing_crm_ids = {r[0] for r in dwh_cur.fetchall()}
 
     opdb_cur.execute("""
-        SELECT id, crm_user_id, full_name, role, agency_id, active
+        SELECT user_id, crm_user_id, last_name, first_name, email, role
         FROM users
-        WHERE id > ?
-        ORDER BY id
-    """, (max_id,))
+        ORDER BY user_id
+    """)
     rows = opdb_cur.fetchall()
-    if not rows:
-        return {"inserted": 0, "skipped": 0}
+    new_rows = [r for r in rows if r.crm_user_id not in existing_crm_ids]
+    if not new_rows:
+        return {"inserted": 0, "skipped": len(rows)}
 
     values = [
-        (r.id, r.crm_user_id or str(r.id), r.full_name or "Undetermined",
-         r.role or "Undetermined", r.agency_id)
-        for r in rows
+        (
+            r.crm_user_id,
+            r.last_name  or "Undetermined",
+            r.first_name or "Undetermined",
+            r.email      or None,
+            r.role       or "Commercial",
+            1,          # agency_id — not available in Op DB
+            "Akouda",  # agency_name
+            "Sousse",  # region
+        )
+        for r in new_rows
     ]
     execute_values(dwh_cur, """
-        INSERT INTO dim_user (user_id, crm_user_id, full_name, role, agency_id)
+        INSERT INTO dim_user
+          (crm_user_id, last_name, first_name, email, role,
+           agency_id, agency_name, region)
         VALUES %s
         ON CONFLICT (crm_user_id) DO NOTHING
     """, values)
-    return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
+    inserted = dwh_cur.rowcount
+    return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
 def _sync_vehicles(opdb_cur, dwh_cur) -> dict:
+    """
+    Op DB  : vehicles(ar_ref, ar_design, brand, model, category, base_price, available)
+    DWH    : dim_vehicle(vehicle_id SERIAL, ar_ref, brand, model, category, base_price)
+    Key    : ar_ref (UNIQUE in both)
+    """
     dwh_cur.execute("SELECT ar_ref FROM dim_vehicle")
     existing_refs = {r[0] for r in dwh_cur.fetchall()}
 
@@ -98,8 +123,13 @@ def _sync_vehicles(opdb_cur, dwh_cur) -> dict:
         return {"inserted": 0, "skipped": len(rows)}
 
     values = [
-        (r.ar_ref, r.brand or "Undetermined", r.model or "Undetermined",
-         r.category or "Undetermined", float(r.base_price or 0))
+        (
+            r.ar_ref,
+            r.brand      or "Undetermined",
+            r.model      or "Undetermined",
+            r.category   or "Undetermined",
+            float(r.base_price or 0),
+        )
         for r in new_rows
     ]
     execute_values(dwh_cur, """
@@ -107,43 +137,75 @@ def _sync_vehicles(opdb_cur, dwh_cur) -> dict:
         VALUES %s
         ON CONFLICT (ar_ref) DO NOTHING
     """, values)
+    inserted = dwh_cur.rowcount
     return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
 
 
 def _sync_clients(opdb_cur, dwh_cur) -> dict:
-    max_id = _get_max_id(dwh_cur, "dim_client", "client_id")
+    """
+    Op DB  : clients(client_id, full_name, email, city, created_at)
+    DWH    : dim_client(client_id SERIAL, full_name, email, city, source)
+    Key    : (full_name, email) — mirrors the DWH dedup logic
+    Note   : Op DB clients have no 'source' field — use 'main_agency'
+    """
+    dwh_cur.execute("SELECT full_name, email FROM dim_client")
+    existing_keys = {(r[0], r[1]) for r in dwh_cur.fetchall()}
 
     opdb_cur.execute("""
-        SELECT id, full_name, email, city, source
+        SELECT client_id, full_name, email, city
         FROM clients
-        WHERE id > ?
-        ORDER BY id
-    """, (max_id,))
+        ORDER BY client_id
+    """)
     rows = opdb_cur.fetchall()
-    if not rows:
-        return {"inserted": 0, "skipped": 0}
+    new_rows = [
+        r for r in rows
+        if (r.full_name, r.email) not in existing_keys
+    ]
+    if not new_rows:
+        return {"inserted": 0, "skipped": len(rows)}
 
     values = [
-        (r.id, r.full_name or "Undetermined", r.email or None,
-         r.city or "Undetermined", r.source or "Undetermined")
-        for r in rows
+        (
+            r.full_name or "Undetermined",
+            r.email     or None,
+            r.city      or "Undetermined",
+            "Akouda",
+        )
+        for r in new_rows
     ]
     execute_values(dwh_cur, """
-        INSERT INTO dim_client (client_id, full_name, email, city, source)
+        INSERT INTO dim_client (full_name, email, city, source)
         VALUES %s
         ON CONFLICT DO NOTHING
     """, values)
-    return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
+    inserted = dwh_cur.rowcount
+    return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
 def _sync_opportunities(opdb_cur, dwh_cur) -> dict:
+    """
+    Op DB  : opportunities(oppo_id, channel, user_id, client_id, created_date,
+                           city, address, deleted, user_email, client_email,
+                           client_reference, source, client_company)
+    DWH    : fact_opportunities(oppo_id, date_id, user_id, agency_id, client_id,
+                                channel, city, deleted, source)
+
+    Mapping:
+      - date_id   : looked up from dim_date using created_date
+      - user_id   : looked up from dim_user using crm_user_id
+      - agency_id : 1
+      - client_id : looked up from dim_client using full_name + email
+    """
     dwh_cur.execute("SELECT oppo_id FROM fact_opportunities")
     existing_ids = {r[0] for r in dwh_cur.fetchall()}
 
     opdb_cur.execute("""
-        SELECT o.oppo_id, o.date_id, o.user_id, o.agency_id,
-               o.client_id, o.channel, o.city, o.deleted
+        SELECT o.oppo_id, o.channel, o.user_id AS crm_user_id,
+               o.client_id AS opdb_client_id, o.created_date,
+               o.city, o.deleted, o.source,
+               c.full_name AS client_name, c.email AS client_email
         FROM opportunities o
+        LEFT JOIN clients c ON c.client_id = o.client_id
         ORDER BY o.oppo_id
     """)
     rows = opdb_cur.fetchall()
@@ -151,12 +213,38 @@ def _sync_opportunities(opdb_cur, dwh_cur) -> dict:
     if not new_rows:
         return {"inserted": 0, "skipped": len(rows)}
 
-    values = [
-        (r.oppo_id, r.date_id, r.user_id, r.agency_id,
-         r.client_id, r.channel or "Undetermined",
-         r.city or "Undetermined", bool(r.deleted), "opdb")
-        for r in new_rows
-    ]
+    # Build lookup caches from DWH for this batch
+    # dim_user: crm_user_id → dwh user_id (SERIAL)
+    dwh_cur.execute("SELECT crm_user_id, user_id FROM dim_user WHERE crm_user_id IS NOT NULL")
+    user_map = {r[0]: r[1] for r in dwh_cur.fetchall()}
+
+    # dim_client: (full_name, email) → dwh client_id (SERIAL)
+    dwh_cur.execute("SELECT full_name, email, client_id FROM dim_client")
+    client_map = {(r[0], r[1]): r[2] for r in dwh_cur.fetchall()}
+
+    # dim_date: date (as date string) → date_id
+    dwh_cur.execute("SELECT date, date_id FROM dim_date")
+    date_map = {str(r[0]): r[1] for r in dwh_cur.fetchall()}
+
+    values = []
+    for r in new_rows:
+        dwh_user_id   = user_map.get(r.crm_user_id)
+        dwh_client_id = client_map.get((r.client_name, r.client_email))
+        date_key      = str(r.created_date.date()) if r.created_date else None
+        date_id       = date_map.get(date_key)
+
+        values.append((
+            r.oppo_id,
+            date_id,
+            dwh_user_id,
+            1,                          # agency_id — not in Op DB
+            dwh_client_id,
+            r.channel  or "Undetermined",
+            r.city     or "Undetermined",
+            bool(r.deleted),
+            r.source   or "main_agency",
+        ))
+
     execute_values(dwh_cur, """
         INSERT INTO fact_opportunities
           (oppo_id, date_id, user_id, agency_id, client_id,
@@ -164,16 +252,30 @@ def _sync_opportunities(opdb_cur, dwh_cur) -> dict:
         VALUES %s
         ON CONFLICT (oppo_id) DO NOTHING
     """, values)
-    return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
+    inserted = dwh_cur.rowcount
+    return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
 def _sync_quotes(opdb_cur, dwh_cur) -> dict:
+    """
+    Op DB  : quotes(quote_id, quote_id_crm, oppo_id, ar_ref, ar_design,
+                    brand, model, created_date, created_by, user_id, source)
+    DWH    : fact_quotes(quote_id SERIAL, quote_id_crm, date_id, user_id,
+                         agency_id, vehicle_id, oppo_id, converted_to_sale, source)
+
+    Mapping:
+      - date_id          : from dim_date via created_date
+      - user_id          : from dim_user via crm_user_id (uses quotes.user_id)
+      - vehicle_id       : from dim_vehicle via ar_ref
+      - converted_to_sale: check if a sale exists for this oppo_id in Op DB
+      - agency_id        : 1
+    """
     dwh_cur.execute("SELECT quote_id_crm FROM fact_quotes WHERE quote_id_crm IS NOT NULL")
     existing_crm_ids = {r[0] for r in dwh_cur.fetchall()}
 
     opdb_cur.execute("""
-        SELECT q.quote_id_crm, q.date_id, q.user_id, q.agency_id,
-               q.vehicle_id, q.oppo_id, q.converted_to_sale
+        SELECT q.quote_id_crm, q.oppo_id, q.ar_ref,
+               q.created_date, q.user_id AS crm_user_id, q.source
         FROM quotes q
         ORDER BY q.quote_id_crm
     """)
@@ -182,11 +284,39 @@ def _sync_quotes(opdb_cur, dwh_cur) -> dict:
     if not new_rows:
         return {"inserted": 0, "skipped": len(rows)}
 
-    values = [
-        (r.quote_id_crm, r.date_id, r.user_id, r.agency_id,
-         r.vehicle_id, r.oppo_id, bool(r.converted_to_sale), "opdb")
-        for r in new_rows
-    ]
+    # Lookup caches
+    dwh_cur.execute("SELECT crm_user_id, user_id FROM dim_user WHERE crm_user_id IS NOT NULL")
+    user_map = {r[0]: r[1] for r in dwh_cur.fetchall()}
+
+    dwh_cur.execute("SELECT ar_ref, vehicle_id FROM dim_vehicle")
+    vehicle_map = {r[0]: r[1] for r in dwh_cur.fetchall()}
+
+    dwh_cur.execute("SELECT date, date_id FROM dim_date")
+    date_map = {str(r[0]): r[1] for r in dwh_cur.fetchall()}
+
+    # Oppos that have a confirmed sale in Op DB
+    opdb_cur.execute("SELECT DISTINCT oppo_id FROM sales")
+    sold_oppo_ids = {r.oppo_id for r in opdb_cur.fetchall()}
+
+    values = []
+    for r in new_rows:
+        dwh_user_id   = user_map.get(r.crm_user_id)
+        dwh_vehicle_id = vehicle_map.get(r.ar_ref)
+        date_key      = str(r.created_date.date()) if r.created_date else None
+        date_id       = date_map.get(date_key)
+        converted     = r.oppo_id in sold_oppo_ids
+
+        values.append((
+            r.quote_id_crm,
+            date_id,
+            dwh_user_id,
+            1,             # agency_id
+            dwh_vehicle_id,
+            r.oppo_id,
+            converted,
+            r.source or "main_agency",
+        ))
+
     execute_values(dwh_cur, """
         INSERT INTO fact_quotes
           (quote_id_crm, date_id, user_id, agency_id,
@@ -194,72 +324,152 @@ def _sync_quotes(opdb_cur, dwh_cur) -> dict:
         VALUES %s
         ON CONFLICT (quote_id_crm) DO NOTHING
     """, values)
-    return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
+    inserted = dwh_cur.rowcount
+    return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
 def _sync_sales(opdb_cur, dwh_cur) -> dict:
-    dwh_cur.execute("SELECT oppo_id FROM fact_sales WHERE source = 'opdb'")
+    """
+    Op DB  : sales(sale_id, quote_id, oppo_id, user_id, ar_ref,
+                   sale_date, final_price, status)
+    DWH    : fact_sales(sale_id SERIAL, date_id, user_id, agency_id,
+                        vehicle_id, oppo_id, amount, quotes_before_sale, source)
+
+    Mapping:
+      - date_id          : from dim_date via sale_date
+      - user_id          : from dim_user via crm_user_id
+      - vehicle_id       : from dim_vehicle via ar_ref
+      - amount           : final_price
+      - quotes_before_sale: COUNT of quotes for the same oppo_id in Op DB
+      - agency_id        : 1
+    Key    : oppo_id (one sale per opportunity)
+    """
+    dwh_cur.execute("SELECT oppo_id FROM fact_sales WHERE source = 'main_agency'")
     existing_oppo_ids = {r[0] for r in dwh_cur.fetchall()}
 
     opdb_cur.execute("""
-        SELECT s.oppo_id, s.date_id, s.user_id, s.agency_id,
-               s.vehicle_id, s.amount, s.quotes_before_sale
+        SELECT s.sale_id, s.oppo_id, s.user_id AS crm_user_id,
+               s.ar_ref, s.sale_date, s.final_price
         FROM sales s
-        ORDER BY s.oppo_id
+        ORDER BY s.sale_id
     """)
     rows = opdb_cur.fetchall()
     new_rows = [r for r in rows if r.oppo_id not in existing_oppo_ids]
     if not new_rows:
         return {"inserted": 0, "skipped": len(rows)}
 
-    values = [
-        (r.oppo_id, r.date_id, r.user_id, r.agency_id,
-         r.vehicle_id, float(r.amount or 0),
-         int(r.quotes_before_sale or 0), "opdb")
-        for r in new_rows
-    ]
+    # Lookup caches
+    dwh_cur.execute("SELECT crm_user_id, user_id FROM dim_user WHERE crm_user_id IS NOT NULL")
+    user_map = {r[0]: r[1] for r in dwh_cur.fetchall()}
+
+    dwh_cur.execute("SELECT ar_ref, vehicle_id FROM dim_vehicle")
+    vehicle_map = {r[0]: r[1] for r in dwh_cur.fetchall()}
+
+    dwh_cur.execute("SELECT date, date_id FROM dim_date")
+    date_map = {str(r[0]): r[1] for r in dwh_cur.fetchall()}
+
+    # quotes_before_sale: count quotes per oppo in Op DB
+    opdb_cur.execute("""
+        SELECT oppo_id, COUNT(*) AS cnt
+        FROM quotes
+        GROUP BY oppo_id
+    """)
+    quotes_count_map = {r.oppo_id: r.cnt for r in opdb_cur.fetchall()}
+
+    values = []
+    for r in new_rows:
+        dwh_user_id    = user_map.get(r.crm_user_id)
+        dwh_vehicle_id = vehicle_map.get(r.ar_ref)
+        date_key       = str(r.sale_date) if r.sale_date else None
+        date_id        = date_map.get(date_key)
+        quotes_before  = quotes_count_map.get(r.oppo_id, 0)
+
+        values.append((
+            date_id,
+            dwh_user_id,
+            1,                          # agency_id
+            dwh_vehicle_id,
+            r.oppo_id,
+            float(r.final_price or 0),
+            quotes_before,
+            "Akouda",
+        ))
+
     execute_values(dwh_cur, """
         INSERT INTO fact_sales
-          (oppo_id, date_id, user_id, agency_id,
-           vehicle_id, amount, quotes_before_sale, source)
+          (date_id, user_id, agency_id, vehicle_id,
+           oppo_id, amount, quotes_before_sale, source)
         VALUES %s
-        ON CONFLICT (oppo_id) DO NOTHING
+        ON CONFLICT DO NOTHING
     """, values)
-    return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
+    inserted = dwh_cur.rowcount
+    return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
 def _sync_targets(opdb_cur, dwh_cur) -> dict:
-    """Targets: sync by (user_id, month, year) composite key."""
+    """
+    Op DB  : targets(target_id, user_id, month, year, sales_target, quotes_target)
+    DWH    : fact_targets(target_id SERIAL, date_id, user_id, agency_id,
+                          month, year, sales_target, quotes_target)
+
+    Key    : (user_id, year, month) — matches UNIQUE constraint in Op DB
+    Note   : date_id → look up dim_date for the 1st of that month/year
+             agency_id → 1 (not in Op DB)
+    """
     dwh_cur.execute("""
-        SELECT user_id, month, year FROM fact_targets
-        WHERE source = 'opdb'
+        SELECT user_id, year, month FROM fact_targets
     """)
     existing_keys = {(r[0], r[1], r[2]) for r in dwh_cur.fetchall()}
 
     opdb_cur.execute("""
-        SELECT t.date_id, t.user_id, t.agency_id,
+        SELECT t.target_id, t.user_id AS crm_user_id,
                t.month, t.year, t.sales_target, t.quotes_target
         FROM targets t
         ORDER BY t.year, t.month, t.user_id
     """)
     rows = opdb_cur.fetchall()
-    new_rows = [r for r in rows if (r.user_id, r.month, r.year) not in existing_keys]
-    if not new_rows:
+
+    # Build lookup caches
+    dwh_cur.execute("SELECT crm_user_id, user_id FROM dim_user WHERE crm_user_id IS NOT NULL")
+    user_map = {r[0]: r[1] for r in dwh_cur.fetchall()}
+
+    dwh_cur.execute("SELECT date, date_id FROM dim_date")
+    date_map = {str(r[0]): r[1] for r in dwh_cur.fetchall()}
+
+    values = []
+    for r in rows:
+        dwh_user_id = user_map.get(r.crm_user_id)
+        if dwh_user_id is None:
+            continue
+        if (dwh_user_id, r.year, r.month) in existing_keys:
+            continue
+
+        # Use 1st day of the month as the date_id anchor
+        date_key = f"{r.year}-{str(r.month).zfill(2)}-01"
+        date_id  = date_map.get(date_key)
+
+        values.append((
+            date_id,
+            dwh_user_id,
+            1,                      # agency_id
+            r.month,
+            r.year,
+            int(r.sales_target  or 0),
+            int(r.quotes_target or 0),
+        ))
+
+    if not values:
         return {"inserted": 0, "skipped": len(rows)}
 
-    values = [
-        (r.date_id, r.user_id, r.agency_id, r.month, r.year,
-         int(r.sales_target or 0), int(r.quotes_target or 0), "opdb")
-        for r in new_rows
-    ]
     execute_values(dwh_cur, """
         INSERT INTO fact_targets
           (date_id, user_id, agency_id, month, year,
-           sales_target, quotes_target, source)
+           sales_target, quotes_target)
         VALUES %s
         ON CONFLICT DO NOTHING
     """, values)
-    return {"inserted": dwh_cur.rowcount, "skipped": len(rows) - dwh_cur.rowcount}
+    inserted = dwh_cur.rowcount
+    return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
 # ── Main entry point ──────────────────────────────────────────
@@ -267,18 +477,17 @@ def _sync_targets(opdb_cur, dwh_cur) -> dict:
 def sync_opdb_to_dwh() -> dict:
     """
     Main sync function. Called by:
-      - APScheduler (every 30 min)
+      - APScheduler (every 30 min, via scheduler.py)
       - POST /admin/opdb/sync  (manual trigger)
 
-    Returns a dict with per-table inserted/skipped counts
-    and a timestamp.
+    Returns a dict with per-table inserted/skipped counts and a timestamp.
     """
     result = {
-        "synced_at": datetime.utcnow().isoformat() + "Z",
-        "tables": {},
+        "synced_at":      datetime.utcnow().isoformat() + "Z",
+        "tables":         {},
         "total_inserted": 0,
-        "total_skipped": 0,
-        "error": None,
+        "total_skipped":  0,
+        "error":          None,
     }
 
     try:
@@ -304,7 +513,7 @@ def sync_opdb_to_dwh() -> dict:
                 result["total_inserted"] += counts["inserted"]
                 result["total_skipped"]  += counts["skipped"]
             except Exception as e:
-                result["tables"][table_name] = {"error": str(e)}
+                result["tables"][table_name] = {"inserted": 0, "skipped": 0, "error": str(e)}
 
         dwh_conn.commit()
 
