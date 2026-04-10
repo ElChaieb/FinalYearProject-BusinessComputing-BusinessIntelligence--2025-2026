@@ -2,18 +2,19 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../api/axios";
 
-const STATUS = { IDLE: "idle", UPLOADING: "uploading", RUNNING: "running", DONE: "done" };
+const STATUS = { IDLE: "idle", UPLOADING: "uploading", RUNNING: "running", SYNCING: "syncing", DONE: "done" };
 
 export default function DataManagement() {
-  const [rawFiles, setRawFiles]           = useState([]);
+  const [rawFiles, setRawFiles]             = useState([]);
   const [processedFiles, setProcessedFiles] = useState([]);
-  const [report, setReport]               = useState(null);
-  const [status, setStatus]               = useState(STATUS.IDLE);
-  const [error, setError]                 = useState(null);
-  const [dragOver, setDragOver]           = useState(false);
-  const fileInputRef                      = useRef();
+  const [report, setReport]                 = useState(null);
+  const [syncResult, setSyncResult]         = useState(null);
+  const [status, setStatus]                 = useState(STATUS.IDLE);
+  const [error, setError]                   = useState(null);
+  const [dragOver, setDragOver]             = useState(false);
+  const fileInputRef                        = useRef();
 
-  // ── Fetch file lists ────────────────────────────────────────
+  // ── Fetch file lists ─────────────────────────────────────
   const fetchFiles = async () => {
     try {
       const [rawRes, procRes] = await Promise.all([
@@ -29,15 +30,13 @@ export default function DataManagement() {
 
   useEffect(() => { fetchFiles(); }, []);
 
-  // ── Upload ──────────────────────────────────────────────────
+  // ── Upload ───────────────────────────────────────────────
   const handleUpload = async (files) => {
     if (!files || files.length === 0) return;
     setStatus(STATUS.UPLOADING);
     setError(null);
-
     const formData = new FormData();
     Array.from(files).forEach((f) => formData.append("files", f));
-
     try {
       await api.post("/admin/data/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -50,13 +49,12 @@ export default function DataManagement() {
     }
   };
 
-  // ── Run ETL ─────────────────────────────────────────────────
+  // ── Run Excel ETL ────────────────────────────────────────
   const handleRunETL = async () => {
     if (rawFiles.length === 0) return;
     setStatus(STATUS.RUNNING);
     setReport(null);
     setError(null);
-
     try {
       const res = await api.post("/admin/data/run");
       setReport(res.data);
@@ -68,42 +66,103 @@ export default function DataManagement() {
     }
   };
 
-  // ── Drag and drop ───────────────────────────────────────────
+  // ── Sync OpDB → DWH ─────────────────────────────────────
+  const handleSyncOpDB = async () => {
+    setStatus(STATUS.SYNCING);
+    setSyncResult(null);
+    setError(null);
+    try {
+      const res = await api.post("/admin/opdb/sync");
+      setSyncResult(res.data);
+    } catch (e) {
+      setError(e.response?.data?.detail || "OpDB sync failed.");
+    } finally {
+      setStatus(STATUS.IDLE);
+    }
+  };
+
+  // ── Drag and drop ────────────────────────────────────────
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
     handleUpload(e.dataTransfer.files);
   };
 
-  const isLoading = status === STATUS.UPLOADING || status === STATUS.RUNNING;
+  const isLoading = status === STATUS.UPLOADING || status === STATUS.RUNNING || status === STATUS.SYNCING;
 
   return (
     <div style={styles.page}>
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Data Management</h1>
-          <p style={styles.subtitle}>Upload and process agency CRM files</p>
+          <p style={styles.subtitle}>Upload CRM files or sync from the main agency database</p>
         </div>
-        <button
-          style={{
-            ...styles.runBtn,
-            ...(rawFiles.length === 0 || isLoading ? styles.runBtnDisabled : {}),
-          }}
-          onClick={handleRunETL}
-          disabled={rawFiles.length === 0 || isLoading}
-        >
-          {status === STATUS.RUNNING ? (
-            <><Spinner /> Processing...</>
-          ) : (
-            <> ▶ Launch ETL Treatment</>
-          )}
-        </button>
+        <div style={styles.headerActions}>
+          {/* Sync OpDB button */}
+          <button
+            style={{
+              ...styles.syncBtn,
+              ...(isLoading ? styles.btnDisabled : {}),
+            }}
+            onClick={handleSyncOpDB}
+            disabled={isLoading}
+          >
+            {status === STATUS.SYNCING ? (
+              <><Spinner /> Syncing...</>
+            ) : (
+              <>⟳ Sync Main Agency DB</>
+            )}
+          </button>
+
+          {/* Run Excel ETL button */}
+          <button
+            style={{
+              ...styles.runBtn,
+              ...(rawFiles.length === 0 || isLoading ? styles.btnDisabled : {}),
+            }}
+            onClick={handleRunETL}
+            disabled={rawFiles.length === 0 || isLoading}
+          >
+            {status === STATUS.RUNNING ? (
+              <><Spinner /> Processing...</>
+            ) : (
+              <>▶ Launch ETL Treatment</>
+            )}
+          </button>
+        </div>
       </div>
 
       {error && <div style={styles.errorBanner}>{error}</div>}
 
-      {/* Main grid */}
+      {/* ── Sync result banner ── */}
+      {syncResult && (
+        <div style={styles.syncBanner}>
+          <span style={styles.syncBannerTitle}>
+            {syncResult.total_inserted === 0
+              ? "✓ Sync complete — no new data found"
+              : `✓ Sync complete — ${syncResult.total_inserted} rows inserted`}
+          </span>
+          <span style={styles.syncBannerMeta}>
+            Last synced at {new Date(syncResult.synced_at).toLocaleTimeString()}
+          </span>
+          <div style={styles.syncTableGrid}>
+            {Object.entries(syncResult.tables || {}).map(([table, counts]) => (
+              <div key={table} style={styles.syncTableCell}>
+                <span style={styles.syncTableName}>{table}</span>
+                <span style={styles.syncTableCount}>
+                  {counts.error
+                    ? <span style={{ color: "#ef4444" }}>error</span>
+                    : `+${counts.inserted}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── File grid ── */}
       <div style={styles.grid}>
 
         {/* Upload zone */}
@@ -137,7 +196,7 @@ export default function DataManagement() {
           </div>
         </div>
 
-        {/* Files in queue */}
+        {/* Pending */}
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>
             <span style={{ ...styles.dot, background: "#f59e0b" }} />
@@ -147,30 +206,11 @@ export default function DataManagement() {
           {rawFiles.length === 0 ? (
             <p style={styles.empty}>No files in queue</p>
           ) : (
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>File</th>
-                  <th style={styles.th}>Agency</th>
-                  <th style={styles.th}>Size</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rawFiles.map((f) => (
-                  <tr key={f.filename} style={styles.tr}>
-                    <td style={styles.td}>{f.filename}</td>
-                    <td style={styles.td}>
-                      <span style={styles.agencyTag}>{f.agency}</span>
-                    </td>
-                    <td style={styles.td}>{f.size_kb} KB</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <FileTable files={rawFiles} styles={styles} />
           )}
         </div>
 
-        {/* Processed files */}
+        {/* Processed */}
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>
             <span style={{ ...styles.dot, background: "#10b981" }} />
@@ -182,39 +222,18 @@ export default function DataManagement() {
           {processedFiles.length === 0 ? (
             <p style={styles.empty}>No processed files yet</p>
           ) : (
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>File</th>
-                  <th style={styles.th}>Agency</th>
-                  <th style={styles.th}>Size</th>
-                </tr>
-              </thead>
-              <tbody>
-                {processedFiles.map((f) => (
-                  <tr key={f.filename} style={styles.tr}>
-                    <td style={styles.td}>{f.filename}</td>
-                    <td style={styles.td}>
-                      <span style={styles.agencyTag}>{f.agency}</span>
-                    </td>
-                    <td style={styles.td}>{f.size_kb} KB</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <FileTable files={processedFiles} styles={styles} />
           )}
         </div>
       </div>
 
-      {/* ETL Report */}
+      {/* ── ETL Report ── */}
       {report && (
         <div style={styles.reportCard}>
           <h2 style={styles.cardTitle}>
             <span style={{ ...styles.dot, background: "#6366f1" }} />
             Treatment Report
           </h2>
-
-          {/* Summary row */}
           <div style={styles.summaryRow}>
             {[
               { label: "Files Processed", value: report.files_processed, color: "#6366f1" },
@@ -228,8 +247,6 @@ export default function DataManagement() {
               </div>
             ))}
           </div>
-
-          {/* Per-file breakdown */}
           <table style={styles.table}>
             <thead>
               <tr>
@@ -249,10 +266,10 @@ export default function DataManagement() {
                   <td style={styles.td}>
                     <span style={styles.agencyTag}>{r.agency || "—"}</span>
                   </td>
-                  <td style={styles.td}>{r.users.inserted} / {r.users.total}</td>
-                  <td style={styles.td}>{r.vehicles.inserted} / {r.vehicles.total}</td>
-                  <td style={styles.td}>{r.opportunities.inserted} / {r.opportunities.total}</td>
-                  <td style={styles.td}>{r.quotes.inserted} / {r.quotes.total}</td>
+                  <td style={styles.td}>{r.users?.inserted} / {r.users?.total}</td>
+                  <td style={styles.td}>{r.vehicles?.inserted} / {r.vehicles?.total}</td>
+                  <td style={styles.td}>{r.opportunities?.inserted} / {r.opportunities?.total}</td>
+                  <td style={styles.td}>{r.quotes?.inserted} / {r.quotes?.total}</td>
                   <td style={styles.td}>
                     <span style={{
                       ...styles.statusBadge,
@@ -269,6 +286,31 @@ export default function DataManagement() {
         </div>
       )}
     </div>
+  );
+}
+
+function FileTable({ files, styles }) {
+  return (
+    <table style={styles.table}>
+      <thead>
+        <tr>
+          <th style={styles.th}>File</th>
+          <th style={styles.th}>Agency</th>
+          <th style={styles.th}>Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        {files.map((f) => (
+          <tr key={f.filename} style={styles.tr}>
+            <td style={styles.td}>{f.filename}</td>
+            <td style={styles.td}>
+              <span style={styles.agencyTag}>{f.agency}</span>
+            </td>
+            <td style={styles.td}>{f.size_kb} KB</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -300,6 +342,11 @@ const styles = {
     alignItems: "flex-start",
     marginBottom: 32,
   },
+  headerActions: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
   title: {
     fontSize: 28,
     fontWeight: 700,
@@ -310,6 +357,20 @@ const styles = {
     fontSize: 14,
     color: "#64748b",
     margin: "4px 0 0",
+  },
+  syncBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "#0ea5e9",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    padding: "12px 20px",
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "background 0.2s",
   },
   runBtn: {
     display: "flex",
@@ -325,7 +386,7 @@ const styles = {
     cursor: "pointer",
     transition: "background 0.2s",
   },
-  runBtnDisabled: {
+  btnDisabled: {
     background: "#cbd5e1",
     cursor: "not-allowed",
   },
@@ -336,6 +397,48 @@ const styles = {
     borderRadius: 8,
     marginBottom: 24,
     fontSize: 14,
+  },
+  syncBanner: {
+    background: "#f0fdf4",
+    border: "1px solid #bbf7d0",
+    borderRadius: 10,
+    padding: "16px 20px",
+    marginBottom: 24,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  syncBannerTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#065f46",
+  },
+  syncBannerMeta: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  syncTableGrid: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  syncTableCell: {
+    background: "#dcfce7",
+    borderRadius: 6,
+    padding: "4px 10px",
+    display: "flex",
+    gap: 6,
+    alignItems: "center",
+    fontSize: 12,
+  },
+  syncTableName: {
+    color: "#14532d",
+    fontWeight: 500,
+  },
+  syncTableCount: {
+    color: "#16a34a",
+    fontWeight: 700,
   },
   grid: {
     display: "grid",
@@ -395,10 +498,7 @@ const styles = {
     borderColor: "#6366f1",
     background: "#eef2ff",
   },
-  dropIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
+  dropIcon: { fontSize: 32, marginBottom: 8 },
   dropText: {
     fontSize: 14,
     color: "#475569",
@@ -416,11 +516,7 @@ const styles = {
     textAlign: "center",
     padding: "24px 0",
   },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: 13,
-  },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
   th: {
     textAlign: "left",
     padding: "8px 10px",
@@ -431,14 +527,8 @@ const styles = {
     textTransform: "uppercase",
     letterSpacing: "0.05em",
   },
-  tr: {
-    borderBottom: "1px solid #f1f5f9",
-  },
-  td: {
-    padding: "10px 10px",
-    color: "#334155",
-    verticalAlign: "middle",
-  },
+  tr: { borderBottom: "1px solid #f1f5f9" },
+  td: { padding: "10px 10px", color: "#334155", verticalAlign: "middle" },
   agencyTag: {
     background: "#ede9fe",
     color: "#5b21b6",
@@ -447,11 +537,7 @@ const styles = {
     fontSize: 12,
     fontWeight: 600,
   },
-  summaryRow: {
-    display: "flex",
-    gap: 16,
-    marginBottom: 24,
-  },
+  summaryRow: { display: "flex", gap: 16, marginBottom: 24 },
   summaryCard: {
     flex: 1,
     background: "#f8fafc",

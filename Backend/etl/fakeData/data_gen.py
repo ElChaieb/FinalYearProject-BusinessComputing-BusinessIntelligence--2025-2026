@@ -296,47 +296,40 @@ def generate_sales():
     quotes_df = pd.DataFrame(cur.fetchall(), columns=cols)
     print(f"  Found {len(quotes_df)} unconverted quote rows")
 
-    unique_quotes = quotes_df.drop_duplicates(subset=["quote_id_crm"])
-    print(f"  Unique CRM quotes: {len(unique_quotes)}")
+    # Each quote_id_crm is unique — iterate directly
+    print(f"  Processing {len(quotes_df)} unique quotes")
 
     sales_inserted   = 0
     quotes_converted = 0
 
-    for _, quote in unique_quotes.iterrows():
+    for _, quote in quotes_df.iterrows():
         if random.random() > CONVERSION_RATE:
             continue
 
-        # All vehicle lines for this CRM quote
-        quote_lines = quotes_df[
-            quotes_df["quote_id_crm"] == quote["quote_id_crm"]
-        ].dropna(subset=["vehicle_id"])
-
-        if quote_lines.empty:
+        if pd.isna(quote["vehicle_id"]):
             continue
 
-        chosen = quote_lines.sample(1).iloc[0]
-
         # Sale date
-        quote_date = pd.Timestamp(chosen["quote_date"]).date()
+        quote_date = pd.Timestamp(quote["quote_date"]).date()
         sale_date  = quote_date + timedelta(days=random.randint(MIN_DELAY_DAYS, MAX_DELAY_DAYS))
 
         # Price
-        base_price  = float(chosen["base_price"]) if pd.notna(chosen["base_price"]) else 90000
+        base_price  = float(quote["base_price"]) if pd.notna(quote["base_price"]) else 90000
         final_price = round(base_price * (1 - random.uniform(DISCOUNT_MIN, DISCOUNT_MAX)), 2)
 
-        # Quotes before sale = how many lines this opportunity had
+        # Quotes before sale = how many quotes this opportunity had total
         quotes_before = int(
-            quotes_df[quotes_df["oppo_id"] == chosen["oppo_id"]]["quote_id_crm"]
+            quotes_df[quotes_df["oppo_id"] == quote["oppo_id"]]["quote_id_crm"]
             .nunique()
-        ) if pd.notna(chosen["oppo_id"]) else len(quote_lines)
+        ) if pd.notna(quote["oppo_id"]) else 1
 
         sale_date_id = get_or_create_date(cur, sale_date)
 
         # ── Resolve FKs safely ────────────────────────────────
-        user_id    = int(chosen["user_id"])    if pd.notna(chosen["user_id"])    else None
-        agency_id  = int(chosen["agency_id"])  if pd.notna(chosen["agency_id"])  else None
-        vehicle_id = int(chosen["vehicle_id"]) if pd.notna(chosen["vehicle_id"]) else None
-        oppo_id    = str(chosen["oppo_id"])    if pd.notna(chosen["oppo_id"])    else None
+        user_id    = int(quote["user_id"])    if pd.notna(quote["user_id"])    else None
+        agency_id  = int(quote["agency_id"])  if pd.notna(quote["agency_id"])  else None
+        vehicle_id = int(quote["vehicle_id"]) if pd.notna(quote["vehicle_id"]) else None
+        oppo_id    = str(quote["oppo_id"])    if pd.notna(quote["oppo_id"])    else None
 
         cur.execute("""
             INSERT INTO fact_sales
@@ -349,7 +342,7 @@ def generate_sales():
         ))
         sales_inserted += 1
 
-        # Mark all lines of this CRM quote as converted
+        # Mark this quote as converted
         cur.execute(
             "UPDATE fact_quotes SET converted_to_sale = TRUE WHERE quote_id_crm = %s",
             (str(quote["quote_id_crm"]),)
