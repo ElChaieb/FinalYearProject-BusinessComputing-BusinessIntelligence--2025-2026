@@ -12,30 +12,31 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      const params = new URLSearchParams();
-      params.append("username", email);
-      params.append("password", password);
+  try {
+    const params = new URLSearchParams();
+    params.append("username", email);
+    params.append("password", password);
 
-      const res = await api.post("/auth/login", params);
-      const { access_token, role } = res.data;
+    const res = await api.post("/auth/login", params);
+    const { access_token } = res.data;
 
-      // Fetch user info
-      const userRes = await api.get("/me", {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
+    // ✅ Store token BEFORE calling /me so the interceptor attaches it
+    localStorage.setItem("token", access_token);
 
-      login({ ...userRes.data }, access_token);
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Invalid email or password");
-    } finally {
-      setLoading(false);
-    }
+    const userRes = await api.get("/me"); // no manual header needed
+
+    login({ ...userRes.data }, access_token);
+    navigate("/dashboard");
+  } catch (err) {
+    localStorage.removeItem("token"); // clean up if /me fails
+    setError("Invalid email or password");
+  } finally {
+    setLoading(false);
+  } 
   };
 
   return (
