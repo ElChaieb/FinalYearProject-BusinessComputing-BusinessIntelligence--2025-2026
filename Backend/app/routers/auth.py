@@ -6,6 +6,7 @@ from app.database import get_db
 from app import models
 from app.auth import verify_password, create_access_token, hash_password, require_role, get_current_user
 from app.utils.email import send_password_email
+from app.utils.email import send_newpassword_email
 from pydantic import BaseModel
 import secrets
 
@@ -154,5 +155,5 @@ def reset_password(
     user.hashed_password = hash_password(new_password)
     db.commit()
 
-    send_password_email(user.email, user.name, new_password)
+    send_newpassword_email(user.email, user.name, new_password, current_user.name)
     return {"message": f"Password reset and sent to {user.email}"}

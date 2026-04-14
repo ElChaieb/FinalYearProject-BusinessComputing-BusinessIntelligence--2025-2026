@@ -22,6 +22,23 @@ def send_password_email(to_email: str, name: str, password: str):
     Regards,
     BI App Team
     """
+def send_newpassword_email(to_email: str, name: str, password: str, admin_name: str):
+    from_email = os.getenv("MAIL_EMAIL")
+    from_password = os.getenv("MAIL_PASSWORD")
+
+    subject = "Your Password Has Been Reset by an Administrator"
+    body = f"""
+    Hello {name},
+
+    Your password has been reset successfully by {admin_name}.
+
+    Here are your login credentials:
+    Email: {to_email}
+    Password: {password}
+
+    Regards,
+    BI App Team
+    """
 
     msg = MIMEMultipart()
     msg["From"] = from_email
