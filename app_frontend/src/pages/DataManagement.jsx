@@ -1,18 +1,25 @@
 // src/pages/DataManagement.jsx
 import { useState, useEffect, useRef } from "react";
 import api from "../api/axios";
+import Sidebar from "../components/Sidebar";
 
-const STATUS = { IDLE: "idle", UPLOADING: "uploading", RUNNING: "running", SYNCING: "syncing", DONE: "done" };
+const STATUS = {
+  IDLE: "idle",
+  UPLOADING: "uploading",
+  RUNNING: "running",
+  SYNCING: "syncing",
+  DONE: "done",
+};
 
 export default function DataManagement() {
-  const [rawFiles, setRawFiles]             = useState([]);
+  const [rawFiles, setRawFiles] = useState([]);
   const [processedFiles, setProcessedFiles] = useState([]);
-  const [report, setReport]                 = useState(null);
-  const [syncResult, setSyncResult]         = useState(null);
-  const [status, setStatus]                 = useState(STATUS.IDLE);
-  const [error, setError]                   = useState(null);
-  const [dragOver, setDragOver]             = useState(false);
-  const fileInputRef                        = useRef();
+  const [report, setReport] = useState(null);
+  const [syncResult, setSyncResult] = useState(null);
+  const [status, setStatus] = useState(STATUS.IDLE);
+  const [error, setError] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef();
 
   // ── Fetch file lists ─────────────────────────────────────
   const fetchFiles = async () => {
@@ -28,7 +35,9 @@ export default function DataManagement() {
     }
   };
 
-  useEffect(() => { fetchFiles(); }, []);
+  useEffect(() => {
+    fetchFiles();
+  }, []);
 
   // ── Upload ───────────────────────────────────────────────
   const handleUpload = async (files) => {
@@ -88,203 +97,264 @@ export default function DataManagement() {
     handleUpload(e.dataTransfer.files);
   };
 
-  const isLoading = status === STATUS.UPLOADING || status === STATUS.RUNNING || status === STATUS.SYNCING;
+  const isLoading =
+    status === STATUS.UPLOADING ||
+    status === STATUS.RUNNING ||
+    status === STATUS.SYNCING;
 
   return (
-    <div style={styles.page}>
+    <div className="flex">
+      <Sidebar />
+      <div className="ml-64 flex-1 min-h-screen bg-[#f8fafc]">
+        <div style={styles.page}>
+          {/* ── Header ── */}
+          <div style={styles.header}>
+            <div>
+              <h1 style={styles.title}>Data Management</h1>
+              <p style={styles.subtitle}>
+                Upload CRM files or sync from the main agency database
+              </p>
+            </div>
+            <div style={styles.headerActions}>
+              {/* Sync OpDB button */}
+              <button
+                style={{
+                  ...styles.syncBtn,
+                  ...(isLoading ? styles.btnDisabled : {}),
+                }}
+                onClick={handleSyncOpDB}
+                disabled={isLoading}
+              >
+                {status === STATUS.SYNCING ? (
+                  <>
+                    <Spinner /> Syncing...
+                  </>
+                ) : (
+                  <>⟳ Sync Main Agency DB</>
+                )}
+              </button>
 
-      {/* ── Header ── */}
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Data Management</h1>
-          <p style={styles.subtitle}>Upload CRM files or sync from the main agency database</p>
-        </div>
-        <div style={styles.headerActions}>
-          {/* Sync OpDB button */}
-          <button
-            style={{
-              ...styles.syncBtn,
-              ...(isLoading ? styles.btnDisabled : {}),
-            }}
-            onClick={handleSyncOpDB}
-            disabled={isLoading}
-          >
-            {status === STATUS.SYNCING ? (
-              <><Spinner /> Syncing...</>
-            ) : (
-              <>⟳ Sync Main Agency DB</>
-            )}
-          </button>
+              {/* Run Excel ETL button */}
+              <button
+                style={{
+                  ...styles.runBtn,
+                  ...(rawFiles.length === 0 || isLoading
+                    ? styles.btnDisabled
+                    : {}),
+                }}
+                onClick={handleRunETL}
+                disabled={rawFiles.length === 0 || isLoading}
+              >
+                {status === STATUS.RUNNING ? (
+                  <>
+                    <Spinner /> Processing...
+                  </>
+                ) : (
+                  <>▶ Launch ETL Treatment</>
+                )}
+              </button>
+            </div>
+          </div>
 
-          {/* Run Excel ETL button */}
-          <button
-            style={{
-              ...styles.runBtn,
-              ...(rawFiles.length === 0 || isLoading ? styles.btnDisabled : {}),
-            }}
-            onClick={handleRunETL}
-            disabled={rawFiles.length === 0 || isLoading}
-          >
-            {status === STATUS.RUNNING ? (
-              <><Spinner /> Processing...</>
-            ) : (
-              <>▶ Launch ETL Treatment</>
-            )}
-          </button>
-        </div>
-      </div>
+          {error && <div style={styles.errorBanner}>{error}</div>}
 
-      {error && <div style={styles.errorBanner}>{error}</div>}
+          {/* ── Sync result banner ── */}
+          {syncResult && (
+            <div style={styles.syncBanner}>
+              <span style={styles.syncBannerTitle}>
+                {syncResult.total_inserted === 0
+                  ? "✓ Sync complete — no new data found"
+                  : `✓ Sync complete — ${syncResult.total_inserted} rows inserted`}
+              </span>
+              <span style={styles.syncBannerMeta}>
+                Last synced at{" "}
+                {new Date(syncResult.synced_at).toLocaleTimeString()}
+              </span>
+              <div style={styles.syncTableGrid}>
+                {Object.entries(syncResult.tables || {}).map(
+                  ([table, counts]) => (
+                    <div key={table} style={styles.syncTableCell}>
+                      <span style={styles.syncTableName}>{table}</span>
+                      <span style={styles.syncTableCount}>
+                        {counts.error ? (
+                          <span style={{ color: "#ef4444" }}>error</span>
+                        ) : (
+                          `+${counts.inserted}`
+                        )}
+                      </span>
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
 
-      {/* ── Sync result banner ── */}
-      {syncResult && (
-        <div style={styles.syncBanner}>
-          <span style={styles.syncBannerTitle}>
-            {syncResult.total_inserted === 0
-              ? "✓ Sync complete — no new data found"
-              : `✓ Sync complete — ${syncResult.total_inserted} rows inserted`}
-          </span>
-          <span style={styles.syncBannerMeta}>
-            Last synced at {new Date(syncResult.synced_at).toLocaleTimeString()}
-          </span>
-          <div style={styles.syncTableGrid}>
-            {Object.entries(syncResult.tables || {}).map(([table, counts]) => (
-              <div key={table} style={styles.syncTableCell}>
-                <span style={styles.syncTableName}>{table}</span>
-                <span style={styles.syncTableCount}>
-                  {counts.error
-                    ? <span style={{ color: "#ef4444" }}>error</span>
-                    : `+${counts.inserted}`}
+          {/* ── File grid ── */}
+          <div style={styles.grid}>
+            {/* Upload zone */}
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>
+                <span style={styles.dot} />
+                Upload Files
+              </h2>
+              <div
+                style={{
+                  ...styles.dropzone,
+                  ...(dragOver ? styles.dropzoneActive : {}),
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current.click()}
+              >
+                <div style={styles.dropIcon}>📂</div>
+                <p style={styles.dropText}>
+                  {status === STATUS.UPLOADING
+                    ? "Uploading..."
+                    : "Drop .xlsx files here or click to browse"}
+                </p>
+                <p style={styles.dropHint}>Multiple files supported</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => handleUpload(e.target.files)}
+                />
+              </div>
+            </div>
+
+            {/* Pending */}
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>
+                <span style={{ ...styles.dot, background: "#f59e0b" }} />
+                Pending Treatment
+                <span style={styles.badge}>{rawFiles.length}</span>
+              </h2>
+              {rawFiles.length === 0 ? (
+                <p style={styles.empty}>No files in queue</p>
+              ) : (
+                <FileTable files={rawFiles} styles={styles} />
+              )}
+            </div>
+
+            {/* Processed */}
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>
+                <span style={{ ...styles.dot, background: "#10b981" }} />
+                Processed Files
+                <span
+                  style={{
+                    ...styles.badge,
+                    background: "#d1fae5",
+                    color: "#065f46",
+                  }}
+                >
+                  {processedFiles.length}
                 </span>
+              </h2>
+              {processedFiles.length === 0 ? (
+                <p style={styles.empty}>No processed files yet</p>
+              ) : (
+                <FileTable files={processedFiles} styles={styles} />
+              )}
+            </div>
+          </div>
+
+          {/* ── ETL Report ── */}
+          {report && (
+            <div style={styles.reportCard}>
+              <h2 style={styles.cardTitle}>
+                <span style={{ ...styles.dot, background: "#6366f1" }} />
+                Treatment Report
+              </h2>
+              <div style={styles.summaryRow}>
+                {[
+                  {
+                    label: "Files Processed",
+                    value: report.files_processed,
+                    color: "#6366f1",
+                  },
+                  {
+                    label: "Files Failed",
+                    value: report.files_failed,
+                    color: "#ef4444",
+                  },
+                  {
+                    label: "Rows Inserted",
+                    value: report.total_inserted,
+                    color: "#10b981",
+                  },
+                  {
+                    label: "Rows Skipped",
+                    value: report.total_skipped,
+                    color: "#f59e0b",
+                  },
+                ].map((s) => (
+                  <div key={s.label} style={styles.summaryCard}>
+                    <span style={{ ...styles.summaryValue, color: s.color }}>
+                      {s.value}
+                    </span>
+                    <span style={styles.summaryLabel}>{s.label}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── File grid ── */}
-      <div style={styles.grid}>
-
-        {/* Upload zone */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>
-            <span style={styles.dot} />
-            Upload Files
-          </h2>
-          <div
-            style={{ ...styles.dropzone, ...(dragOver ? styles.dropzoneActive : {}) }}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current.click()}
-          >
-            <div style={styles.dropIcon}>📂</div>
-            <p style={styles.dropText}>
-              {status === STATUS.UPLOADING
-                ? "Uploading..."
-                : "Drop .xlsx files here or click to browse"}
-            </p>
-            <p style={styles.dropHint}>Multiple files supported</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => handleUpload(e.target.files)}
-            />
-          </div>
-        </div>
-
-        {/* Pending */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>
-            <span style={{ ...styles.dot, background: "#f59e0b" }} />
-            Pending Treatment
-            <span style={styles.badge}>{rawFiles.length}</span>
-          </h2>
-          {rawFiles.length === 0 ? (
-            <p style={styles.empty}>No files in queue</p>
-          ) : (
-            <FileTable files={rawFiles} styles={styles} />
-          )}
-        </div>
-
-        {/* Processed */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>
-            <span style={{ ...styles.dot, background: "#10b981" }} />
-            Processed Files
-            <span style={{ ...styles.badge, background: "#d1fae5", color: "#065f46" }}>
-              {processedFiles.length}
-            </span>
-          </h2>
-          {processedFiles.length === 0 ? (
-            <p style={styles.empty}>No processed files yet</p>
-          ) : (
-            <FileTable files={processedFiles} styles={styles} />
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>File</th>
+                    <th style={styles.th}>Agency</th>
+                    <th style={styles.th}>Users</th>
+                    <th style={styles.th}>Vehicles</th>
+                    <th style={styles.th}>Opportunities</th>
+                    <th style={styles.th}>Quotes</th>
+                    <th style={styles.th}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.reports.map((r) => (
+                    <tr key={r.file} style={styles.tr}>
+                      <td style={styles.td}>{r.file}</td>
+                      <td style={styles.td}>
+                        <span style={styles.agencyTag}>{r.agency || "—"}</span>
+                      </td>
+                      <td style={styles.td}>
+                        {r.users?.inserted} / {r.users?.total}
+                      </td>
+                      <td style={styles.td}>
+                        {r.vehicles?.inserted} / {r.vehicles?.total}
+                      </td>
+                      <td style={styles.td}>
+                        {r.opportunities?.inserted} / {r.opportunities?.total}
+                      </td>
+                      <td style={styles.td}>
+                        {r.quotes?.inserted} / {r.quotes?.total}
+                      </td>
+                      <td style={styles.td}>
+                        <span
+                          style={{
+                            ...styles.statusBadge,
+                            background:
+                              r.status === "success" ? "#d1fae5" : "#fee2e2",
+                            color:
+                              r.status === "success" ? "#065f46" : "#991b1b",
+                          }}
+                        >
+                          {r.status === "success" ? "✓ Done" : "✗ Failed"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
-
-      {/* ── ETL Report ── */}
-      {report && (
-        <div style={styles.reportCard}>
-          <h2 style={styles.cardTitle}>
-            <span style={{ ...styles.dot, background: "#6366f1" }} />
-            Treatment Report
-          </h2>
-          <div style={styles.summaryRow}>
-            {[
-              { label: "Files Processed", value: report.files_processed, color: "#6366f1" },
-              { label: "Files Failed",    value: report.files_failed,    color: "#ef4444" },
-              { label: "Rows Inserted",   value: report.total_inserted,  color: "#10b981" },
-              { label: "Rows Skipped",    value: report.total_skipped,   color: "#f59e0b" },
-            ].map((s) => (
-              <div key={s.label} style={styles.summaryCard}>
-                <span style={{ ...styles.summaryValue, color: s.color }}>{s.value}</span>
-                <span style={styles.summaryLabel}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>File</th>
-                <th style={styles.th}>Agency</th>
-                <th style={styles.th}>Users</th>
-                <th style={styles.th}>Vehicles</th>
-                <th style={styles.th}>Opportunities</th>
-                <th style={styles.th}>Quotes</th>
-                <th style={styles.th}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.reports.map((r) => (
-                <tr key={r.file} style={styles.tr}>
-                  <td style={styles.td}>{r.file}</td>
-                  <td style={styles.td}>
-                    <span style={styles.agencyTag}>{r.agency || "—"}</span>
-                  </td>
-                  <td style={styles.td}>{r.users?.inserted} / {r.users?.total}</td>
-                  <td style={styles.td}>{r.vehicles?.inserted} / {r.vehicles?.total}</td>
-                  <td style={styles.td}>{r.opportunities?.inserted} / {r.opportunities?.total}</td>
-                  <td style={styles.td}>{r.quotes?.inserted} / {r.quotes?.total}</td>
-                  <td style={styles.td}>
-                    <span style={{
-                      ...styles.statusBadge,
-                      background: r.status === "success" ? "#d1fae5" : "#fee2e2",
-                      color:      r.status === "success" ? "#065f46" : "#991b1b",
-                    }}>
-                      {r.status === "success" ? "✓ Done" : "✗ Failed"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
@@ -316,15 +386,18 @@ function FileTable({ files, styles }) {
 
 function Spinner() {
   return (
-    <span style={{
-      display: "inline-block",
-      width: 14, height: 14,
-      border: "2px solid #ffffff44",
-      borderTop: "2px solid #fff",
-      borderRadius: "50%",
-      animation: "spin 0.7s linear infinite",
-      marginRight: 8,
-    }} />
+    <span
+      style={{
+        display: "inline-block",
+        width: 14,
+        height: 14,
+        border: "2px solid #ffffff44",
+        borderTop: "2px solid #fff",
+        borderRadius: "50%",
+        animation: "spin 0.7s linear infinite",
+        marginRight: 8,
+      }}
+    />
   );
 }
 
