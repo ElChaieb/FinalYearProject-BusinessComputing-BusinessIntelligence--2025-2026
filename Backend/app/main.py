@@ -1,23 +1,10 @@
-# Backend/app/main.py
-from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-
+from sqlalchemy.sql import func
 from app.routers import auth, admin
-from app.auth import get_current_user, require_role
-from app.scheduler import start_scheduler, stop_scheduler
+from app.auth import get_current_user
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # ── startup ──────────────────────────────────────────────
-    start_scheduler(interval_minutes=30)
-    yield
-    # ── shutdown ─────────────────────────────────────────────
-    stop_scheduler()
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,16 +23,15 @@ def root():
     return {"message": "API is running"}
 
 
-@app.get("/test-db")
-def test_db():
-    return {"message": "DB connected successfully"}
-
-
+# US-04: returns full profile including agency info for dashboard scoping
 @app.get("/me")
 def get_me(current_user=Depends(get_current_user)):
-    return {"email": current_user.email, "role": current_user.role}
-
-
-@app.get("/admin-only")
-def admin_route(current_user=Depends(require_role("admin"))):
-    return {"message": f"Hello admin {current_user.name}"}
+    return {
+        "id":          current_user.id,
+        "name":        current_user.name,
+        "email":       current_user.email,
+        "role":        current_user.role,
+        "is_active":   current_user.is_active,
+        "agency_name": current_user.agency_name,
+        "last_login":  current_user.last_login.isoformat() if current_user.last_login else None,
+    }
