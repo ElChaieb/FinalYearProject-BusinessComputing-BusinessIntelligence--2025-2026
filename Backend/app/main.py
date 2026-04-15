@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.sql import func
 from app.routers import auth, admin
 from app.auth import get_current_user
+from app.routers import dashboard
 
 app = FastAPI()
 
@@ -16,6 +17,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/")
