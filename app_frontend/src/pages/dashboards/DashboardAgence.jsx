@@ -12,8 +12,8 @@ import {
 } from "../../hooks/useDashboard";
 
 const fmt = (n) =>
-  n >= 1e6 ? `${(n/1e6).toFixed(2)} M TND`
-  : n >= 1e3 ? `${(n/1e3).toFixed(0)} K TND`
+  n >= 1e6 ? `${(n/1e6).toFixed(2)}  TND`
+  : n >= 1e3 ? `${(n/1e3).toFixed(0)}  TND`
   : `${n} TND`;
 
 function KpiCard({ label, value, sub, trend }) {

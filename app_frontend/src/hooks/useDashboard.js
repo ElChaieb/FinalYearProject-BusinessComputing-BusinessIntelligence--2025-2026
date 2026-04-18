@@ -7,7 +7,6 @@
 //   After:   const { data, loading, error } = useGlobalRevenue(filter);
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../context/AuthContext";
 
 const BASE = "/api";   // adjust to your FastAPI base URL
 
@@ -21,7 +20,7 @@ function buildUrl(path, params = {}) {
 }
 
 function useFetch(path, params, deps = []) {
-  const { token } = useAuth();
+  const token = localStorage.getItem("token");
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
