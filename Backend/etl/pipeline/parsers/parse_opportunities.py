@@ -2,22 +2,32 @@
 """
 Loads opportunities from the OP sheet into fact_opportunities.
 
-Per-row logic:
-  - user_id  resolved via crm_user_id (Oppo_AssignedUserId) — required column so always present
-  - client_id resolved via get_or_create_client() — extracted from Comp_Name / Emai_EmailAddress
-  - Rows with a NULL or unparseable oppo_id are skipped with a warning (not rejected)
-  - Rows already in DB are skipped (idempotent)
+deleted semantics (DWH business rule — NOT the CRM source value):
+  deleted=TRUE  → opportunity did not lead to any quote
+  deleted=FALSE → opportunity led to at least one quote  ("won")
+
+All opportunities are inserted with deleted=TRUE. After parse_and_load_quotes()
+commits, mark_won_opportunities() flips deleted=FALSE on every opportunity
+that now has at least one linked quote in fact_quotes.
+
+Column mapping:
+  Oppo_OpportunityId  → fact_opportunities.oppo_id
+  Chan_Description    → fact_opportunities.agency_name
+  Oppo_CreatedDate    → fact_opportunities.created_date
+  Oppo_AssignedUserId → fact_opportunities.user_id        (FK → dim_user, direct)
+  Comp_Name           → dim_client.full_name
+  Addr_City           → dim_client.city
+  Emai_EmailAddress   → dim_client.email
+  comp_reference      → fact_opportunities.client_reference
+  (Oppo_Deleted intentionally ignored — deleted is derived, not sourced)
 """
 import pandas as pd
-from etl.pipeline.parsers.parse_date import get_or_create_date
 from etl.pipeline.parsers.parse_clients import get_or_create_client
 from etl.utils.db import get_connection
 from etl.utils.logger import logger
 
 
-def parse_and_load_opportunities(
-    df_op: pd.DataFrame, agency_id: int, source: str
-) -> dict:
+def parse_and_load_opportunities(df_op: pd.DataFrame) -> dict:
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
     df = (
@@ -31,17 +41,15 @@ def parse_and_load_opportunities(
     )
     report["total"] = len(df)
 
-    # Pre-build a crm_user_id → user_id lookup for this file
-    # (avoids one DB round-trip per row for the common case)
-    user_cache: dict[int, int | None] = {}
-
     conn = get_connection()
     cur  = conn.cursor()
     try:
         for _, row in df.iterrows():
-            oppo_id = str(row["Oppo_OpportunityId"]).strip()
+            oppo_id = _safe_int(row["Oppo_OpportunityId"])
+            if oppo_id is None:
+                report["skipped"] += 1
+                continue
 
-            # ── Skip if already loaded ────────────────────────────────────
             cur.execute(
                 "SELECT 1 FROM fact_opportunities WHERE oppo_id = %s", (oppo_id,)
             )
@@ -49,46 +57,33 @@ def parse_and_load_opportunities(
                 report["skipped"] += 1
                 continue
 
-            # ── Resolve date_id ───────────────────────────────────────────
-            date_id = get_or_create_date(row.get("Oppo_CreatedDate"), cur)
+            user_id = _safe_int(row.get("Oppo_AssignedUserId"))
 
-            # ── Resolve user_id (per-row, cached) ─────────────────────────
-            crm_uid = _safe_int(row.get("Oppo_AssignedUserId"))
-            if crm_uid not in user_cache:
-                cur.execute(
-                    "SELECT user_id FROM dim_user WHERE crm_user_id = %s", (crm_uid,)
-                )
-                r = cur.fetchone()
-                user_cache[crm_uid] = r[0] if r else None
-                if user_cache[crm_uid] is None:
-                    logger.warning(
-                        f"  oppo {oppo_id}: crm_user_id {crm_uid} not found in dim_user"
-                    )
-            user_id = user_cache[crm_uid]
-
-            # ── Resolve client_id ─────────────────────────────────────────
             client_id = get_or_create_client(
                 cur=cur,
                 full_name=row.get("Comp_Name"),
                 email=row.get("Emai_EmailAddress"),
                 city=row.get("Addr_City"),
-                source=source,
             )
 
-            # ── Optional fields ───────────────────────────────────────────
-            channel = _clean(row.get("Chan_Description"))
-            city    = _clean(row.get("Addr_City"))
-            deleted = bool(row.get("Oppo_Deleted", False))
+            agency_name      = _clean(row.get("Chan_Description"))
+            client_reference = _clean(row.get("comp_reference"))
+            created_date     = row.get("Oppo_CreatedDate")
+            created_date_val = (
+                created_date.date()
+                if pd.notna(created_date) and hasattr(created_date, "date")
+                else None
+            )
 
             cur.execute(
                 """
                 INSERT INTO fact_opportunities
-                    (oppo_id, date_id, user_id, agency_id, client_id,
-                     channel, city, deleted, source)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (oppo_id, user_id, client_id, agency_name,
+                     created_date, client_reference, deleted)
+                VALUES (%s, %s, %s, %s, %s, %s, TRUE)
                 """,
-                (oppo_id, date_id, user_id, agency_id, client_id,
-                 channel, city, deleted, source),
+                (oppo_id, user_id, client_id, agency_name,
+                 created_date_val, client_reference),
             )
             report["inserted"] += 1
 
@@ -107,6 +102,42 @@ def parse_and_load_opportunities(
         conn.close()
 
     return report
+
+
+def mark_won_opportunities() -> int:
+    """
+    Flip deleted=FALSE on every opportunity that has at least one linked quote.
+    Called from parse_quotes after its transaction commits so the new rows
+    are visible.
+    Returns the number of rows updated.
+    """
+    conn = get_connection()
+    cur  = conn.cursor()
+    try:
+        cur.execute(
+            """
+            UPDATE fact_opportunities
+            SET    deleted = FALSE
+            WHERE  deleted = TRUE
+              AND  oppo_id IN (
+                  SELECT DISTINCT oppo_id
+                  FROM   fact_quotes
+                  WHERE  oppo_id IS NOT NULL
+              )
+            """
+        )
+        updated = cur.rowcount
+        conn.commit()
+        if updated:
+            logger.info(f"Opportunities marked won (deleted=FALSE): {updated}")
+        return updated
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error in mark_won_opportunities: {e}")
+        raise
+    finally:
+        cur.close()
+        conn.close()
 
 
 def _safe_int(val):

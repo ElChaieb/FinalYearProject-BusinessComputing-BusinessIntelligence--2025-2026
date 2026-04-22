@@ -1,4 +1,0 @@
-Used to extract Akouda agency data from excel files
-The extracted data Will be used to simulate Operational DB.
-
-Real ETL (OPDB to DWH) in opdb_sync
