@@ -1,16 +1,16 @@
 // hooks/useDashboard.js
 //
-// Drop-in data hooks for all three dashboards.
-// Each hook mirrors the dummy-data shape so replacing is a one-liner:
+// All API hooks for the new dashboard design.
+// useFetch is a shared helper — JWT token from localStorage, date params forwarded.
 //
-//   Before:  const data = REVENUE_DATA;
-//   After:   const { data, loading, error } = useGlobalRevenue(filter);
+// Global  → /dashboard/global/*    (DG, DC, Admin)
+// Agency  → /dashboard/agency/*    (Responsable d'Agence — scoped server-side)
+// Me      → /dashboard/me/*        (Commercial — scoped server-side)
 
 import { useState, useEffect, useCallback } from "react";
 
-const BASE = "/api";   // adjust to your FastAPI base URL
+const BASE = "/api";
 
-// ─── shared fetch helper ────────────────────────────────────────
 function buildUrl(path, params = {}) {
   const url = new URL(`${BASE}${path}`, window.location.origin);
   Object.entries(params).forEach(([k, v]) => {
@@ -46,125 +46,233 @@ function useFetch(path, params, deps = []) {
   return { data, loading, error, refetch: fetch_ };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// GLOBAL DASHBOARD hooks
-// ═══════════════════════════════════════════════════════════════
-
-/** GET /dashboard/global/kpis */
-export function useGlobalKpis(filter) {
-  return useFetch("/dashboard/global/kpis", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+// Helper — converts a { from, to } date filter object to query params
+function dateParams(filter) {
+  return { from: filter?.from, to: filter?.to };
 }
 
-/** GET /dashboard/global/revenue — replaces REVENUE_DATA */
-export function useGlobalRevenue(filter) {
-  return useFetch("/dashboard/global/revenue", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL — Section 1 (Revenue)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** GET /dashboard/global/section1/kpis
+ *  → { total_revenue, avg_sale_value, highest_sale_value, lowest_sale_value, sales_count }
+ */
+export function useGlobalSection1Kpis(filter) {
+  return useFetch("/dashboard/global/section1/kpis", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/global/agencies — replaces AGENCY_DATA */
-export function useGlobalAgencies(filter) {
-  return useFetch("/dashboard/global/agencies", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/global/section1/revenue-by-month
+ *  → [{ date, <AgencyName>: revenue, ... }]  — pivoted, one object per month
+ */
+export function useGlobalRevenueByMonth(filter) {
+  return useFetch("/dashboard/global/section1/revenue-by-month", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/global/top-commercials — replaces TOP_COMMERCIALS */
-export function useGlobalTopCommercials(filter, limit = 5) {
-  return useFetch("/dashboard/global/top-commercials", {
-    from: filter?.from, to: filter?.to, limit,
-  }, [filter?.from, filter?.to, limit]);
+/** GET /dashboard/global/section1/agency-summary
+ *  → [{ agency, total, totalFmt, change, changeType, stroke }]
+ */
+export function useGlobalAgencySummary(filter) {
+  return useFetch("/dashboard/global/section1/agency-summary", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/global/funnel — replaces FUNNEL_DATA */
-export function useGlobalFunnel(filter) {
-  return useFetch("/dashboard/global/funnel", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL — Section 2 (Conversion Funnel)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** GET /dashboard/global/section2/kpis
+ *  → { total_opportunities, total_quotes, total_sales }
+ */
+export function useGlobalSection2Kpis(filter) {
+  return useFetch("/dashboard/global/section2/kpis", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/global/vehicles — replaces VEHICLE_DATA */
-export function useGlobalVehicles(filter) {
-  return useFetch("/dashboard/global/vehicles", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/global/section2/funnel-by-month
+ *  → [{ date, Opportunities, Quotes, Sales }]
+ */
+export function useGlobalFunnelByMonth(filter) {
+  return useFetch("/dashboard/global/section2/funnel-by-month", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/global/channels — replaces CHANNEL_DATA */
-export function useGlobalChannels(filter) {
-  return useFetch("/dashboard/global/channels", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/global/section2/agency-funnel
+ *  → [{ agency, opportunities, quotes, sales, convOQ, convQS }]
+ */
+export function useGlobalAgencyFunnel(filter) {
+  return useFetch("/dashboard/global/section2/agency-funnel", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/global/targets — replaces TARGETS_DATA */
-export function useGlobalTargets(filter) {
-  return useFetch("/dashboard/global/targets", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL — Section 3 (Vehicle Trends)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** GET /dashboard/global/section3/kpis
+ *  → { most_sold_category, most_sold_count, least_sold_category, least_sold_count, avg_category_sales }
+ */
+export function useGlobalSection3Kpis(filter) {
+  return useFetch("/dashboard/global/section3/kpis", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// AGENCY DASHBOARD hooks
-// agency_id is read server-side from JWT — no need to pass it here
-// ═══════════════════════════════════════════════════════════════
+/** GET /dashboard/global/section3/categories
+ *  → [{ category, sales }]
+ */
+export function useGlobalCategories(filter) {
+  return useFetch("/dashboard/global/section3/categories", dateParams(filter),
+    [filter?.from, filter?.to]);
+}
 
-/** GET /dashboard/agency/kpis */
+/** GET /dashboard/global/section3/brands
+ *  → [{ brand, sales }]
+ */
+export function useGlobalBrands(filter) {
+  return useFetch("/dashboard/global/section3/brands", dateParams(filter),
+    [filter?.from, filter?.to]);
+}
+
+/** GET /dashboard/global/section3/agency-vehicles
+ *  → [{ agency, totalSales, topCategory, topBrand }]
+ */
+export function useGlobalAgencyVehicles(filter) {
+  return useFetch("/dashboard/global/section3/agency-vehicles", dateParams(filter),
+    [filter?.from, filter?.to]);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL — Section 4 (Customer Segmentation)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** GET /dashboard/global/section4/kpis
+ *  → { highest_state, highest_count, lowest_state, lowest_count, total_clients }
+ */
+export function useGlobalSection4Kpis(filter) {
+  return useFetch("/dashboard/global/section4/kpis", dateParams(filter),
+    [filter?.from, filter?.to]);
+}
+
+/** GET /dashboard/global/section4/clients-by-state
+ *  → [{ city, clients, newClients }]
+ */
+export function useGlobalClientsByState(filter) {
+  return useFetch("/dashboard/global/section4/clients-by-state", dateParams(filter),
+    [filter?.from, filter?.to]);
+}
+
+/** GET /dashboard/global/section4/agency-clients
+ *  → [{ agency, totalClients, newClients, repeatRate }]
+ */
+export function useGlobalAgencyClients(filter) {
+  return useFetch("/dashboard/global/section4/agency-clients", dateParams(filter),
+    [filter?.from, filter?.to]);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENCY — scoped to logged-in agency manager
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** GET /dashboard/agency/kpis
+ *  → { sales, revenue, opportunities, quotes, convOQ, convQS }
+ */
 export function useAgencyKpis(filter) {
-  return useFetch("/dashboard/agency/kpis", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+  return useFetch("/dashboard/agency/kpis", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/agency/team — replaces TEAM_DATA */
-export function useAgencyTeam(filter) {
-  return useFetch("/dashboard/agency/team", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/agency/revenue-by-month
+ *  → [{ date, Revenue }]
+ */
+export function useAgencyRevenueByMonth(filter) {
+  return useFetch("/dashboard/agency/revenue-by-month", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/agency/revenue — replaces REVENUE_DATA in DashboardAgence */
-export function useAgencyRevenue(filter) {
-  return useFetch("/dashboard/agency/revenue", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/agency/commercials
+ *  → [{ id, name, email, sales, revenue, revenueFmt, quotes, convRate, change, changeType }]
+ */
+export function useAgencyCommercials(filter) {
+  return useFetch("/dashboard/agency/commercials", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/agency/targets */
-export function useAgencyTargets(filter) {
-  return useFetch("/dashboard/agency/targets", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/agency/commercial/:id/kpis */
+export function useAgencyCommercialKpis(commercialId, filter) {
+  return useFetch(
+    commercialId ? `/dashboard/agency/commercial/${commercialId}/kpis` : null,
+    dateParams(filter),
+    [commercialId, filter?.from, filter?.to],
+  );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// COMMERCIAL DASHBOARD hooks
-// user_id is read server-side from JWT
-// ═══════════════════════════════════════════════════════════════
+/** GET /dashboard/agency/commercial/:id/revenue-by-month */
+export function useAgencyCommercialRevenue(commercialId, filter) {
+  return useFetch(
+    commercialId ? `/dashboard/agency/commercial/${commercialId}/revenue-by-month` : null,
+    dateParams(filter),
+    [commercialId, filter?.from, filter?.to],
+  );
+}
 
-/** GET /dashboard/me/kpis — replaces THIS_MONTH + individual KPI values */
+/** GET /dashboard/agency/commercial/:id/top-vehicles */
+export function useAgencyCommercialVehicles(commercialId, filter) {
+  return useFetch(
+    commercialId ? `/dashboard/agency/commercial/${commercialId}/top-vehicles` : null,
+    dateParams(filter),
+    [commercialId, filter?.from, filter?.to],
+  );
+}
+
+/** GET /dashboard/agency/commercial/:id/recent-sales */
+export function useAgencyCommercialRecentSales(commercialId, filter, limit = 10) {
+  return useFetch(
+    commercialId ? `/dashboard/agency/commercial/${commercialId}/recent-sales` : null,
+    { ...dateParams(filter), limit },
+    [commercialId, filter?.from, filter?.to, limit],
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMERCIAL (me) — scoped to logged-in commercial
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** GET /dashboard/me/kpis
+ *  → { sales, revenue, opportunities, quotes, convOQ, convQS }
+ */
 export function useMeKpis(filter) {
-  return useFetch("/dashboard/me/kpis", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+  return useFetch("/dashboard/me/kpis", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/me/quotes — replaces MONTHLY_DATA */
-export function useMeQuotes(filter) {
-  return useFetch("/dashboard/me/quotes", {
-    from: filter?.from, to: filter?.to,
-  }, [filter?.from, filter?.to]);
+/** GET /dashboard/me/revenue-by-month
+ *  → [{ date, Revenue }]
+ */
+export function useMeRevenueByMonth(filter) {
+  return useFetch("/dashboard/me/revenue-by-month", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/me/monthly-target?year=YYYY */
-export function useMeMonthlyTarget(year) {
-  return useFetch("/dashboard/me/monthly-target", { year },
-    [year]);
+/** GET /dashboard/me/top-vehicles
+ *  → [{ vehicle, sales }]
+ */
+export function useMeTopVehicles(filter) {
+  return useFetch("/dashboard/me/top-vehicles", dateParams(filter),
+    [filter?.from, filter?.to]);
 }
 
-/** GET /dashboard/me/recent-activity — replaces RECENT_QUOTES */
-export function useMeRecentActivity(limit = 10) {
-  return useFetch("/dashboard/me/recent-activity", { limit }, [limit]);
+/** GET /dashboard/me/recent-sales
+ *  → [{ date, vehicle, client, amount, amountFmt }]
+ */
+export function useMeRecentSales(filter, limit = 10) {
+  return useFetch("/dashboard/me/recent-sales", { ...dateParams(filter), limit },
+    [filter?.from, filter?.to, limit]);
 }

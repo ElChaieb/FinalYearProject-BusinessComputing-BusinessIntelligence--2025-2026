@@ -32,7 +32,7 @@ def get_dwh_connection() -> psycopg2.extensions.connection:
     return psycopg2.connect(
         host=os.getenv("DWH_HOST",         "localhost"),
         port=int(os.getenv("DWH_PORT",     "5432")),
-        dbname=os.getenv("DWH_NAME",       "warehouse_db"),
+        dbname=os.getenv("DWH_NAME",       "warehouse_v2"),
         user=os.getenv("DWH_USER",         "admin"),
         password=os.getenv("DWH_PASSWORD", "admin"),
     )

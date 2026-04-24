@@ -81,8 +81,8 @@ OPDB_DRIVER   = os.getenv("OPDB_DRIVER",   "ODBC Driver 17 for SQL Server")
 OPDB_HOST     = os.getenv("OPDB_HOST",     "localhost")
 OPDB_PORT     = os.getenv("OPDB_PORT",     "1433")
 OPDB_NAME     = os.getenv("OPDB_NAME",     "OperationalDB")
-OPDB_USER     = os.getenv("OPDB_USER",     "")
-OPDB_PASSWORD = os.getenv("OPDB_PASSWORD", "")
+OPDB_USER     = os.getenv("OPDB_USER",     "admin")
+OPDB_PASSWORD = os.getenv("OPDB_PASSWORD", "Password7@")
 
 # ── Sheet names ───────────────────────────────────────────────────────────────
 OP_SHEET    = "OP"
