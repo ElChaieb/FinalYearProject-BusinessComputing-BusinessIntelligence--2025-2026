@@ -3,16 +3,14 @@ import os
 import shutil
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from app.auth import require_role
+from app.config import RAW_DIR_STR, PROCESSED_DIR_STR, REJECTED_DIR_STR
 from etl.pipeline.file_processor import process_file, process_all_raw_files
-from dotenv import load_dotenv
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-load_dotenv()
-BASE_DIR      = os.getenv("BASE_DIR")
-RAW_DIR       = os.path.join(BASE_DIR, "etl", "raw")
-PROCESSED_DIR = os.path.join(BASE_DIR, "etl", "processed")
-REJECTED_DIR  = os.path.join(BASE_DIR, "etl", "rejected")
+RAW_DIR       = RAW_DIR_STR
+PROCESSED_DIR = PROCESSED_DIR_STR
+REJECTED_DIR  = REJECTED_DIR_STR
 
 for folder in [RAW_DIR, PROCESSED_DIR, REJECTED_DIR]:
     os.makedirs(folder, exist_ok=True)

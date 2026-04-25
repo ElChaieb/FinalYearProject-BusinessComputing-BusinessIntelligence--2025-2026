@@ -24,6 +24,8 @@ import re
 import shutil
 import pandas as pd
 from datetime import datetime
+import sys
+from pathlib import Path
 
 from etl.pipeline.validators.schema_validator import validate_sheets
 from etl.pipeline.parsers.parse_users         import parse_and_load_users
@@ -31,13 +33,16 @@ from etl.pipeline.parsers.parse_vehicles      import parse_and_load_vehicles
 from etl.pipeline.parsers.parse_opportunities import parse_and_load_opportunities
 from etl.pipeline.parsers.parse_quotes        import parse_and_load_quotes
 from etl.utils.logger import logger
-from dotenv import load_dotenv
 
-load_dotenv()
-BASE_DIR      = os.getenv("BASE_DIR", ".")
-RAW_DIR       = os.path.join(BASE_DIR, "etl", "raw")
-PROCESSED_DIR = os.path.join(BASE_DIR, "etl", "processed")
-REJECTED_DIR  = os.path.join(BASE_DIR, "etl", "rejected")
+# Add Backend directory to path for config import
+BACKEND_DIR = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(BACKEND_DIR))
+
+from app.config import BASE_DIR, RAW_DIR_STR, PROCESSED_DIR_STR, REJECTED_DIR_STR
+
+RAW_DIR       = RAW_DIR_STR
+PROCESSED_DIR = PROCESSED_DIR_STR
+REJECTED_DIR  = REJECTED_DIR_STR
 
 OP_SHEET    = "OP"
 DEVIS_SHEET = "DEVIS"

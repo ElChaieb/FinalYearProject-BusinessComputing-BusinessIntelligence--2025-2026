@@ -57,32 +57,30 @@ import os
 import random
 import re
 import shutil
+import sys
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 # ── Third-party ───────────────────────────────────────────────────────────────
 import pandas as pd
 import pyodbc
-from dotenv import load_dotenv
+
+# Add Backend directory to path for config import
+BACKEND_DIR = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(BACKEND_DIR))
+
+from app.config import RAW_DIR_STR, PROCESSED_DIR_STR, REJECTED_DIR_STR, LOGS_DIR_STR
+from app.config import OPDB_DRIVER, OPDB_SERVER, OPDB_PORT, OPDB_NAME, OPDB_USER, OPDB_PASSWORD
 
 # =============================================================================
 # CONFIG
 # =============================================================================
 
-load_dotenv()
-
 # ── Directories ───────────────────────────────────────────────────────────────
-BASE_DIR      = os.getenv("BASE_DIR", ".")
-RAW_DIR       = os.path.join(BASE_DIR, "etl", "raw")
-PROCESSED_DIR = os.path.join(BASE_DIR, "etl", "processed")
-REJECTED_DIR  = os.path.join(BASE_DIR, "etl", "rejected")
-
-# ── SQL Server connection ─────────────────────────────────────────────────────
-OPDB_DRIVER   = os.getenv("OPDB_DRIVER",   "ODBC Driver 17 for SQL Server")
-OPDB_HOST     = os.getenv("OPDB_HOST",     "localhost")
-OPDB_PORT     = os.getenv("OPDB_PORT",     "1433")
-OPDB_NAME     = os.getenv("OPDB_NAME",     "OperationalDB")
-OPDB_USER     = os.getenv("OPDB_USER",     "admin")
-OPDB_PASSWORD = os.getenv("OPDB_PASSWORD", "Password7@")
+RAW_DIR       = RAW_DIR_STR
+PROCESSED_DIR = PROCESSED_DIR_STR
+REJECTED_DIR  = REJECTED_DIR_STR
+LOGS_DIR      = LOGS_DIR_STR
 
 # ── Sheet names ───────────────────────────────────────────────────────────────
 OP_SHEET    = "OP"
@@ -96,14 +94,14 @@ FAKE_SALE_RATE_MAX = 0.23
 # LOGGER
 # =============================================================================
 
-os.makedirs("etl/logs", exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler(
-            f"etl/logs/opdb_load_{datetime.now().strftime('%Y%m%d')}.log"
+            os.path.join(LOGS_DIR, f"opdb_load_{datetime.now().strftime('%Y%m%d')}.log")
         ),
         logging.StreamHandler(),
     ],
