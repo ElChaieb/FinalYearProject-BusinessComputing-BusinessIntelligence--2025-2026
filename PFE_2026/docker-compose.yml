@@ -1,0 +1,25 @@
+
+services:
+  # --- Operational Database (The "Sage" Simulator) ---
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: pfe_sqlserver
+    # SQL Server is heavy. Limit its memory if your laptop struggles.
+    mem_limit: 2048m 
+    ports:
+      - "1433:1433" # Default SQL Server port
+    environment:
+      - ACCEPT_EULA=Y
+      # MUST be a strong password (Capital, Number, Symbol) or it won't start!
+      - MSSQL_SA_PASSWORD=Password7@ 
+
+  # --- Data Warehouse (The Analytics) ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: pfe_warehouse
+    ports:
+      - "5432:5432" # Default Postgres port
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=warehouse_db

@@ -301,9 +301,9 @@ def _sync_sales(opdb_cur, dwh_cur) -> dict:
     """
     OpDB:  sales (sale_id, quote_id, oppo_id, user_id, client_id,
                   ar_ref, agency_name, sale_date, quantity, final_price)
-    DWH:   fact_sales (sale_id, quote_id, oppo_id, user_id, client_id,
+    DWH:   fact_sales (sale_id SERIAL, quote_id UNIQUE, oppo_id, user_id, client_id,
                        ar_ref, agency_name, sale_date DATE, quantity, final_price)
-    Key:   sale_id  (direct)
+    Key:   sale_id  (explicit override of SERIAL — sequence refreshed after insert)
     """
     dwh_cur.execute("SELECT sale_id FROM fact_sales")
     existing_ids = {r[0] for r in dwh_cur.fetchall()}
@@ -346,6 +346,14 @@ def _sync_sales(opdb_cur, dwh_cur) -> dict:
         values,
     )
     inserted = dwh_cur.rowcount
+
+    # Keep the SERIAL sequence ahead of the highest synced sale_id
+    # to avoid conflicts on any future auto-generated inserts
+    dwh_cur.execute(
+        "SELECT setval('fact_sales_sale_id_seq', "
+        "(SELECT COALESCE(MAX(sale_id), 1) FROM fact_sales))"
+    )
+
     return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
