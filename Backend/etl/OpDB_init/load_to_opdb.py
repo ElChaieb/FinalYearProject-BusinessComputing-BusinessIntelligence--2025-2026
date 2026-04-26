@@ -122,7 +122,7 @@ def get_connection() -> pyodbc.Connection:
     if OPDB_USER:
         conn_str = (
             f"DRIVER={{{OPDB_DRIVER}}};"
-            f"SERVER={OPDB_HOST},{OPDB_PORT};"
+            f"SERVER={OPDB_SERVER},{OPDB_PORT};"
             f"DATABASE={OPDB_NAME};"
             f"UID={OPDB_USER};"
             f"PWD={OPDB_PASSWORD};"
@@ -130,7 +130,7 @@ def get_connection() -> pyodbc.Connection:
     else:
         conn_str = (
             f"DRIVER={{{OPDB_DRIVER}}};"
-            f"SERVER={OPDB_HOST},{OPDB_PORT};"
+            f"SERVER={OPDB_SERVER},{OPDB_PORT};"
             f"DATABASE={OPDB_NAME};"
             "Trusted_Connection=yes;"
         )
@@ -1152,7 +1152,7 @@ def _print_summary(reports: list[dict]) -> None:
 
 if __name__ == "__main__":
     logger.info("Starting OperationalDB load")
-    logger.info(f"Target server: {OPDB_HOST}:{OPDB_PORT}  db={OPDB_NAME}")
+    logger.info(f"Target server: {OPDB_SERVER}:{OPDB_PORT}  db={OPDB_NAME}")
 
     reports = process_all()
     _print_summary(reports)

@@ -7,16 +7,16 @@ import Navbar from "../components/Navbar";
 import api from "../api/axios";
 
 const ROLES = [
-  "Directeur Général",
-  "Directeur Commercial",
-  "Responsable d'Agence",
+  "General Director",
+  "Commercial Director",
+  "Agency Manager",
   "Commercial",
 ];
 
-const AGENCIES = ["Akouda", "Birkassa", "Sfax", "Gabès", "Ben Arous"];
+const AGENCIES = ["Geely Sousse", "Geely Sfax", "Geely Gabes", "Geely Ben Arous"];
 
 // Roles that must be tied to an agency
-const AGENCY_ROLES = ["Responsable d'Agence", "Commercial"];
+const AGENCY_ROLES = ["Agency Manager", "Commercial"];
 
 function Badge({ active }) {
   return (

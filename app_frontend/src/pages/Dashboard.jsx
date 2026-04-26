@@ -16,10 +16,10 @@ import AgencyManagerDashboard from "../pages/Dashboards/AgencyDashboard/AgencyMa
 import CommercialDashboard from "../pages/Dashboards/CommercialDashboard/CommercialDashboard";
 
 const ROLE_MAP = {
-  "Directeur Général": "global",
-  "Directeur Commercial": "global",
+  "General Director": "global",
+  "Commercial Director": "global",
   "Administrateur BI": "global",
-  "Responsable d'Agence": "agency",
+  "Agency Manager": "agency",
   Commercial: "commercial",
 };
 
