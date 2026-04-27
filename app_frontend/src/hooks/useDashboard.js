@@ -22,10 +22,15 @@ function buildUrl(path, params = {}) {
 function useFetch(path, params, deps = []) {
   const token = localStorage.getItem("token");
   const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!path); // false immediately when path is null
   const [error,   setError]   = useState(null);
 
   const fetch_ = useCallback(async () => {
+    if (!path) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -182,26 +187,27 @@ export function useGlobalAgencyClients(filter) {
 
 /** GET /dashboard/agency/kpis
  *  → { sales, revenue, opportunities, quotes, convOQ, convQS }
+ *  Pass agencyName to drill into a specific agency from the global view.
  */
-export function useAgencyKpis(filter) {
-  return useFetch("/dashboard/agency/kpis", dateParams(filter),
-    [filter?.from, filter?.to]);
+export function useAgencyKpis(filter, agencyName = null) {
+  return useFetch("/dashboard/agency/kpis", { ...dateParams(filter), agency: agencyName || undefined },
+    [filter?.from, filter?.to, agencyName]);
 }
 
 /** GET /dashboard/agency/revenue-by-month
  *  → [{ date, Revenue }]
  */
-export function useAgencyRevenueByMonth(filter) {
-  return useFetch("/dashboard/agency/revenue-by-month", dateParams(filter),
-    [filter?.from, filter?.to]);
+export function useAgencyRevenueByMonth(filter, agencyName = null) {
+  return useFetch("/dashboard/agency/revenue-by-month", { ...dateParams(filter), agency: agencyName || undefined },
+    [filter?.from, filter?.to, agencyName]);
 }
 
 /** GET /dashboard/agency/commercials
  *  → [{ id, name, email, sales, revenue, revenueFmt, quotes, convRate, change, changeType }]
  */
-export function useAgencyCommercials(filter) {
-  return useFetch("/dashboard/agency/commercials", dateParams(filter),
-    [filter?.from, filter?.to]);
+export function useAgencyCommercials(filter, agencyName = null) {
+  return useFetch("/dashboard/agency/commercials", { ...dateParams(filter), agency: agencyName || undefined },
+    [filter?.from, filter?.to, agencyName]);
 }
 
 /** GET /dashboard/agency/commercial/:id/kpis */
@@ -247,9 +253,10 @@ export function useAgencyCommercialRecentSales(commercialId, filter, limit = 10)
 
 /** GET /dashboard/me/kpis
  *  → { sales, revenue, opportunities, quotes, convOQ, convQS }
+ *  Pass filter=null to disable (used by CommercialPanel in agency mode).
  */
 export function useMeKpis(filter) {
-  return useFetch("/dashboard/me/kpis", dateParams(filter),
+  return useFetch(filter ? "/dashboard/me/kpis" : null, dateParams(filter),
     [filter?.from, filter?.to]);
 }
 
@@ -257,7 +264,7 @@ export function useMeKpis(filter) {
  *  → [{ date, Revenue }]
  */
 export function useMeRevenueByMonth(filter) {
-  return useFetch("/dashboard/me/revenue-by-month", dateParams(filter),
+  return useFetch(filter ? "/dashboard/me/revenue-by-month" : null, dateParams(filter),
     [filter?.from, filter?.to]);
 }
 
@@ -265,7 +272,7 @@ export function useMeRevenueByMonth(filter) {
  *  → [{ vehicle, sales }]
  */
 export function useMeTopVehicles(filter) {
-  return useFetch("/dashboard/me/top-vehicles", dateParams(filter),
+  return useFetch(filter ? "/dashboard/me/top-vehicles" : null, dateParams(filter),
     [filter?.from, filter?.to]);
 }
 
@@ -273,6 +280,6 @@ export function useMeTopVehicles(filter) {
  *  → [{ date, vehicle, client, amount, amountFmt }]
  */
 export function useMeRecentSales(filter, limit = 10) {
-  return useFetch("/dashboard/me/recent-sales", { ...dateParams(filter), limit },
+  return useFetch(filter ? "/dashboard/me/recent-sales" : null, { ...dateParams(filter), limit },
     [filter?.from, filter?.to, limit]);
 }

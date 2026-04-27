@@ -40,6 +40,8 @@ TUNISIA_STATES = [
     "Tataouine", "Gafsa", "Tozeur", "Kebili",
 ]
 
+GLOBAL_ROLES = {"Directeur Général", "Directeur Commercial", "Administrateur BI"}
+
 
 # ── DWH connection ─────────────────────────────────────────────────────────────
 
@@ -710,11 +712,19 @@ def global_agency_clients(
 def agency_kpis(
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
+    agency_override: Optional[str] = Query(None, alias="agency"),
 ):
     """
     Agency-level KPIs: total sales, revenue, opp→quote rate, quote→sale rate.
+    Global roles (DG, DC, Admin) may pass ?agency=<name> to drill into any agency.
+    Agency managers are always scoped to their own agency.
     """
-    agency = user.agency_name
+
+    agency = (
+        agency_override
+        if agency_override and user.role in GLOBAL_ROLES
+        else user.agency_name
+    )
     r = _one("""
         SELECT
             COUNT(DISTINCT fs.sale_id)                                AS sales,
@@ -757,14 +767,21 @@ def agency_kpis(
 def agency_revenue_by_month(
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
+    agency_override: Optional[str] = Query(None, alias="agency"),
 ):
     """Monthly revenue area chart for this agency."""
+
+    agency = (
+        agency_override
+        if agency_override and user.role in GLOBAL_ROLES
+        else user.agency_name
+    )
     rows = _query("""
         SELECT
             TO_CHAR(DATE_TRUNC('month', sale_date), 'Mon YY') AS date,
             EXTRACT(YEAR  FROM sale_date)::int                AS year,
             EXTRACT(MONTH FROM sale_date)::int                AS month,
-            COALESCE(SUM(final_price), 0)                     AS Revenue
+            COALESCE(SUM(final_price), 0)                     AS revenue
         FROM fact_sales
         WHERE agency_name = %s
           AND sale_date BETWEEN %s AND %s
@@ -772,20 +789,27 @@ def agency_revenue_by_month(
                  EXTRACT(YEAR FROM sale_date),
                  EXTRACT(MONTH FROM sale_date)
         ORDER BY year, month
-    """, (user.agency_name, dr["from_date"], dr["to_date"]))
+    """, (agency, dr["from_date"], dr["to_date"]))
 
-    return [{"date": r["date"], "Revenue": float(r["Revenue"])} for r in rows]
+    return [{"date": r["date"], "Revenue": float(r["revenue"])} for r in rows]
 
 
 @router.get("/agency/commercials")
 def agency_commercials(
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
+    agency_override: Optional[str] = Query(None, alias="agency"),
 ):
     """
     All commercials in this agency with their KPIs.
     Used for the commercial performance table + drill-down.
     """
+
+    agency = (
+        agency_override
+        if agency_override and user.role in GLOBAL_ROLES
+        else user.agency_name
+    )
     from datetime import timedelta
     period_days = (dr["to_date"] - dr["from_date"]).days + 1
     prev_from = dr["from_date"] - timedelta(days=period_days)
@@ -814,7 +838,7 @@ def agency_commercials(
     """, (
         dr["from_date"], dr["to_date"],
         dr["from_date"], dr["to_date"],
-        user.agency_name,
+        agency,
     ))
 
     # Previous period for % change
@@ -825,7 +849,7 @@ def agency_commercials(
             AND fs.sale_date BETWEEN %s AND %s
         WHERE du.agency_name = %s AND du.role = 'Commercial'
         GROUP BY du.user_id
-    """, (prev_from, prev_to, user.agency_name))
+    """, (prev_from, prev_to, agency))
 
     prev_map = {r["user_id"]: float(r["revenue"]) for r in prev_rows}
 
@@ -861,21 +885,35 @@ def agency_commercials(
     return result
 
 
+
+def _verify_commercial_access(commercial_id: int, user) -> None:
+    """Raise 403 if user cannot access this commercial's data.
+    Global roles (DG, DC, Admin) can drill into any commercial.
+    Agency managers are restricted to their own agency's team.
+    """
+    if user.role in GLOBAL_ROLES:
+        # Just verify the commercial exists
+        check = _one(
+            "SELECT user_id FROM dim_user WHERE user_id = %s AND role = 'Commercial'",
+            (commercial_id,),
+        )
+    else:
+        check = _one("""
+            SELECT user_id FROM dim_user
+            WHERE user_id = %s AND agency_name = %s AND role = 'Commercial'
+        """, (commercial_id, user.agency_name))
+    if not check:
+        raise HTTPException(status_code=403, detail="Commercial not accessible")
+
+
 @router.get("/agency/commercial/{commercial_id}/kpis")
 def agency_commercial_kpis(
     commercial_id: int,
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
 ):
-    """KPIs for a single commercial — agency manager can drill into any of their team."""
-    # Verify this commercial belongs to the requesting manager's agency
-    check = _one("""
-        SELECT user_id FROM dim_user
-        WHERE user_id = %s AND agency_name = %s AND role = 'Commercial'
-    """, (commercial_id, user.agency_name))
-    if not check:
-        raise HTTPException(status_code=403, detail="Commercial not in your agency")
-
+    """KPIs for a single commercial — agency manager or global role can drill in."""
+    _verify_commercial_access(commercial_id, user)
     return _commercial_kpis_for(commercial_id, dr)
 
 
@@ -885,13 +923,7 @@ def agency_commercial_revenue(
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
 ):
-    check = _one("""
-        SELECT user_id FROM dim_user
-        WHERE user_id = %s AND agency_name = %s AND role = 'Commercial'
-    """, (commercial_id, user.agency_name))
-    if not check:
-        raise HTTPException(status_code=403, detail="Commercial not in your agency")
-
+    _verify_commercial_access(commercial_id, user)
     return _commercial_revenue_for(commercial_id, dr)
 
 
@@ -901,13 +933,7 @@ def agency_commercial_vehicles(
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
 ):
-    check = _one("""
-        SELECT user_id FROM dim_user
-        WHERE user_id = %s AND agency_name = %s AND role = 'Commercial'
-    """, (commercial_id, user.agency_name))
-    if not check:
-        raise HTTPException(status_code=403, detail="Commercial not in your agency")
-
+    _verify_commercial_access(commercial_id, user)
     return _commercial_top_vehicles_for(commercial_id, dr)
 
 
@@ -918,13 +944,7 @@ def agency_commercial_recent_sales(
     dr=Depends(date_range_params),
     user=Depends(get_current_user),
 ):
-    check = _one("""
-        SELECT user_id FROM dim_user
-        WHERE user_id = %s AND agency_name = %s AND role = 'Commercial'
-    """, (commercial_id, user.agency_name))
-    if not check:
-        raise HTTPException(status_code=403, detail="Commercial not in your agency")
-
+    _verify_commercial_access(commercial_id, user)
     return _commercial_recent_sales_for(commercial_id, dr, limit)
 
 
@@ -1020,7 +1040,7 @@ def _commercial_revenue_for(uid: int, dr: dict) -> list:
             TO_CHAR(DATE_TRUNC('month', sale_date), 'Mon YY') AS date,
             EXTRACT(YEAR  FROM sale_date)::int                AS year,
             EXTRACT(MONTH FROM sale_date)::int                AS month,
-            COALESCE(SUM(final_price), 0)                     AS Revenue
+            COALESCE(SUM(final_price), 0)                     AS revenue
         FROM fact_sales
         WHERE user_id = %s AND sale_date BETWEEN %s AND %s
         GROUP BY DATE_TRUNC('month', sale_date),
@@ -1029,7 +1049,7 @@ def _commercial_revenue_for(uid: int, dr: dict) -> list:
         ORDER BY year, month
     """, (uid, dr["from_date"], dr["to_date"]))
 
-    return [{"date": r["date"], "Revenue": float(r["Revenue"])} for r in rows]
+    return [{"date": r["date"], "Revenue": float(r["revenue"])} for r in rows]
 
 
 def _commercial_top_vehicles_for(uid: int, dr: dict) -> list:

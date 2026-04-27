@@ -33,9 +33,9 @@ const fmt = (n) =>
 export default function AgencyPanel({ agencyName, filter, onClose }) {
   const [selectedCommercial, setSelectedCommercial] = useState(null);
 
-  const { data: kpis, loading: lk } = useAgencyKpis(filter);
-  const { data: revenue, loading: lr } = useAgencyRevenueByMonth(filter);
-  const { data: commercials, loading: lc } = useAgencyCommercials(filter);
+  const { data: kpis, loading: lk } = useAgencyKpis(filter, agencyName);
+  const { data: revenue, loading: lr } = useAgencyRevenueByMonth(filter, agencyName);
+  const { data: commercials, loading: lc } = useAgencyCommercials(filter, agencyName);
 
   // Build funnel data for FunnelLegend from kpis
   const funnelRows = kpis

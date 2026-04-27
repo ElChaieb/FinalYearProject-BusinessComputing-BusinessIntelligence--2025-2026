@@ -274,10 +274,11 @@ def _resolve_user(row, has_user_id: bool, cur, cache: dict, quote_id: int):
 
 
 def _random_date_after(start: date | None, end: date) -> date:
-    if start is None or start >= end:
+    if start is None:
         return end
-    delta = (end - start).days
-    return start + timedelta(days=random.randint(1, delta))
+    offset = random.randint(1, 6)
+    result = start + timedelta(days=offset)
+    return min(result, end)
 
 
 def _safe_int(val):

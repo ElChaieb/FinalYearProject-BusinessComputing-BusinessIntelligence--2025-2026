@@ -1,108 +1,310 @@
-// Dashboard.jsx — routes to the correct dashboard based on user role
-// Passes filter (date range) down to all sections
+// pages/Dashboard.jsx — Overview landing page
+// Shows Level 0 KPI pulse cards for all 4 sections
+// Routes to role-specific dashboards for Agency Manager and Commercial
 
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Sidebar from "../components/Sidebar";
+import { useFilter } from "../context/FilterContext";
+import DashboardLayout from "../components/DashboardLayout";
 import {
-  DateRangePicker,
-  DEFAULT_PRESETS,
-} from "../components/DateRangePicker";
-import Section1 from "../pages/Dashboards/GlobalDashboards/Section1";
-import Section2 from "../pages/Dashboards/GlobalDashboards/Section2";
-import Section3 from "../pages/Dashboards/GlobalDashboards/Section3";
-import Section4 from "../pages/Dashboards/GlobalDashboards/Section4";
-import AgencyManagerDashboard from "../pages/Dashboards/AgencyDashboard/AgencyManagerDashboard";
-import CommercialDashboard from "../pages/Dashboards/CommercialDashboard/CommercialDashboard";
+  useGlobalSection1Kpis,
+  useGlobalSection2Kpis,
+  useGlobalSection3Kpis,
+  useGlobalSection4Kpis,
+  useAgencyKpis,
+  useMeKpis,
+} from "../hooks/useDashboard";
 
+// Role resolution
 const ROLE_MAP = {
-  "General Director": "global",
-  "Commercial Director": "global",
-  "Administrateur BI": "global",
-  "Agency Manager": "agency",
-  Commercial: "commercial",
+  "Directeur Général":    "global",
+  "Directeur Commercial": "global",
+  "Administrateur BI":    "global",
+  "Responsable d'Agence": "agency",
+  "Commercial":           "commercial",
 };
+
+const fmt = (n) =>
+  n >= 1_000_000
+    ? `${(n / 1_000_000).toFixed(2)} M TND`
+    : n >= 1_000
+    ? `${Math.round(n / 1_000)} K TND`
+    : `${n} TND`;
+
+const pct = (a, b) => (b > 0 ? `${((a / b) * 100).toFixed(1)}%` : "0%");
 
 export default function Dashboard() {
   const { user } = useAuth();
   const role = ROLE_MAP[user?.role] ?? "global";
 
-  if (role === "agency") return <AgencyManagerDashboard />;
-  if (role === "commercial") return <CommercialDashboard />;
-  return <GlobalDashboard />;
+  if (role === "agency")     return <AgencyOverview />;
+  if (role === "commercial") return <CommercialOverview />;
+  return <GlobalOverview />;
 }
 
-function GlobalDashboard() {
-  const [range, setRange] = useState(undefined);
+// ─── Global Overview ──────────────────────────────────────────────────────────
 
-  // Convert DateRangePicker value to { from, to } strings for hooks
-  const filter =
-    range?.from && range?.to
-      ? {
-          from: range.from.toISOString().split("T")[0],
-          to: range.to.toISOString().split("T")[0],
-        }
-      : undefined;
+function GlobalOverview() {
+  const { filter } = useFilter();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const [isExpandedS1, setIsExpandedS1] = useState(false);
-  const [isExpandedS2, setIsExpandedS2] = useState(false);
-  const [isExpandedS3, setIsExpandedS3] = useState(false);
-  const [isExpandedS4, setIsExpandedS4] = useState(false);
-  const [activeTabS1, setActiveTabS1] = useState("monthly");
-  const [activeTabS2, setActiveTabS2] = useState("monthly");
-  const [activeTabS3, setActiveTabS3] = useState("monthly");
-  const [activeTabS4, setActiveTabS4] = useState("monthly");
+  const { data: s1, loading: l1 } = useGlobalSection1Kpis(filter);
+  const { data: s2, loading: l2 } = useGlobalSection2Kpis(filter);
+  const { data: s3, loading: l3 } = useGlobalSection3Kpis(filter);
+  const { data: s4, loading: l4 } = useGlobalSection4Kpis(filter);
+
+  const sections = [
+    {
+      key: "revenue",
+      label: "Revenue",
+      path: "/dashboard/revenue",
+      color: "#3b82f6",
+      icon: "💰",
+      loading: l1,
+      kpis: s1 ? [
+        { label: "Total Revenue",  value: fmt(s1.total_revenue) },
+        { label: "Sales Count",    value: s1.sales_count },
+        { label: "Avg Sale Value", value: fmt(s1.avg_sale_value) },
+      ] : [],
+    },
+    {
+      key: "funnel",
+      label: "Conversion Funnel",
+      path: "/dashboard/funnel",
+      color: "#8b5cf6",
+      icon: "🔄",
+      loading: l2,
+      kpis: s2 ? [
+        { label: "Opportunities",   value: s2.total_opportunities },
+        { label: "Quotes",          value: s2.total_quotes },
+        { label: "Sales",           value: s2.total_sales },
+        { label: "End-to-End Rate", value: pct(s2.total_sales, s2.total_opportunities) },
+      ] : [],
+    },
+    {
+      key: "vehicles",
+      label: "Vehicles",
+      path: "/dashboard/vehicles",
+      color: "#06b6d4",
+      icon: "🚗",
+      loading: l3,
+      kpis: s3 ? [
+        { label: "Top Category",    value: s3.most_sold_category ?? "—" },
+        { label: "Top Count",       value: s3.most_sold_count },
+        { label: "Avg Cat. Sales",  value: s3.avg_category_sales },
+      ] : [],
+    },
+    {
+      key: "clients",
+      label: "Clients",
+      path: "/dashboard/clients",
+      color: "#10b981",
+      icon: "👥",
+      loading: l4,
+      kpis: s4 ? [
+        { label: "Total Clients",   value: s4.total_clients },
+        { label: "Top Governorate", value: s4.highest_state ?? "—" },
+        { label: "Top Count",       value: s4.highest_count },
+      ] : [],
+    },
+  ];
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="ml-64 flex-1 min-h-screen bg-[#0f1117] p-8 text-white">
-        <header className="fixed top-0 left-64 right-0 h-16 bg-white/95 border-b border-gray-200 flex items-center px-6 z-10">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-            <p className="text-sm text-gray-500">Manager — full access</p>
-          </div>
-          <div className="ml-auto w-80 text-black">
-            <DateRangePicker
-              value={range}
-              onChange={setRange}
-              presets={DEFAULT_PRESETS}
-              className="w-full"
-            />
-          </div>
-        </header>
-
-        <main className="pt-24 space-y-8">
-          <Section1
-            filter={filter}
-            isExpanded={isExpandedS1}
-            setIsExpanded={setIsExpandedS1}
-            activeTab={activeTabS1}
-            setActiveTab={setActiveTabS1}
+    <DashboardLayout
+      title="Overview"
+      subtitle={`Welcome back, ${user?.name}`}
+    >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+        {sections.map((section) => (
+          <SectionPulseCard
+            key={section.key}
+            section={section}
+            onClick={() => navigate(section.path)}
           />
-          <Section2
-            filter={filter}
-            isExpanded={isExpandedS2}
-            setIsExpanded={setIsExpandedS2}
-            activeTab={activeTabS2}
-            setActiveTab={setActiveTabS2}
-          />
-          <Section3
-            filter={filter}
-            isExpanded={isExpandedS3}
-            setIsExpanded={setIsExpandedS3}
-            activeTab={activeTabS3}
-            setActiveTab={setActiveTabS3}
-          />
-          <Section4
-            filter={filter}
-            isExpanded={isExpandedS4}
-            setIsExpanded={setIsExpandedS4}
-            activeTab={activeTabS4}
-            setActiveTab={setActiveTabS4}
-          />
-        </main>
+        ))}
       </div>
+
+      {/* Quick nav hint */}
+      <div style={{ marginTop: 32, textAlign: "center" }}>
+        <p style={{ fontSize: 12, color: "#334155" }}>
+          Click any section to drill down — or use the sidebar to navigate directly
+        </p>
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// ─── Agency Overview ──────────────────────────────────────────────────────────
+
+function AgencyOverview() {
+  const { filter } = useFilter();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const { data: kpis, loading } = useAgencyKpis(filter);
+
+  const sections = [
+    {
+      key: "revenue", label: "Revenue", path: "/dashboard/revenue",
+      color: "#3b82f6", icon: "💰", loading,
+      kpis: kpis ? [
+        { label: "Revenue",    value: fmt(kpis.revenue) },
+        { label: "Sales",      value: kpis.sales },
+      ] : [],
+    },
+    {
+      key: "funnel", label: "Conversion Funnel", path: "/dashboard/funnel",
+      color: "#8b5cf6", icon: "🔄", loading,
+      kpis: kpis ? [
+        { label: "Opportunities", value: kpis.opportunities },
+        { label: "Quotes",        value: kpis.quotes },
+        { label: "OQ Rate",       value: kpis.convOQ },
+        { label: "QS Rate",       value: kpis.convQS },
+      ] : [],
+    },
+    {
+      key: "vehicles", label: "Vehicles", path: "/dashboard/vehicles",
+      color: "#06b6d4", icon: "🚗", loading: false, kpis: [],
+    },
+    {
+      key: "clients", label: "Clients", path: "/dashboard/clients",
+      color: "#10b981", icon: "👥", loading: false, kpis: [],
+    },
+  ];
+
+  return (
+    <DashboardLayout
+      title="Agency Overview"
+      subtitle={user?.agency_name}
+    >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+        {sections.map((section) => (
+          <SectionPulseCard key={section.key} section={section} onClick={() => navigate(section.path)} />
+        ))}
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// ─── Commercial Overview ──────────────────────────────────────────────────────
+
+function CommercialOverview() {
+  const { filter } = useFilter();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const { data: kpis, loading } = useMeKpis(filter);
+
+  const sections = [
+    {
+      key: "revenue", label: "My Revenue", path: "/dashboard/revenue",
+      color: "#3b82f6", icon: "💰", loading,
+      kpis: kpis ? [
+        { label: "Revenue", value: fmt(kpis.revenue) },
+        { label: "Sales",   value: kpis.sales },
+      ] : [],
+    },
+    {
+      key: "funnel", label: "My Pipeline", path: "/dashboard/funnel",
+      color: "#8b5cf6", icon: "🔄", loading,
+      kpis: kpis ? [
+        { label: "Opportunities", value: kpis.opportunities },
+        { label: "Quotes",        value: kpis.quotes },
+        { label: "Conv. Rate",    value: kpis.convQS },
+      ] : [],
+    },
+    {
+      key: "vehicles", label: "My Vehicles", path: "/dashboard/vehicles",
+      color: "#06b6d4", icon: "🚗", loading: false, kpis: [],
+    },
+    {
+      key: "clients", label: "My Clients", path: "/dashboard/clients",
+      color: "#10b981", icon: "👥", loading: false, kpis: [],
+    },
+  ];
+
+  return (
+    <DashboardLayout
+      title="My Dashboard"
+      subtitle={user?.name}
+    >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+        {sections.map((section) => (
+          <SectionPulseCard key={section.key} section={section} onClick={() => navigate(section.path)} />
+        ))}
+      </div>
+    </DashboardLayout>
+  );
+}
+
+// ─── Section Pulse Card ───────────────────────────────────────────────────────
+
+function SectionPulseCard({ section, onClick }) {
+  const { label, color, icon, loading, kpis } = section;
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        background: "#0d1117",
+        border: `1px solid #1e2530`,
+        borderRadius: 14,
+        padding: "20px 22px",
+        cursor: "pointer",
+        transition: "all 0.18s",
+        position: "relative",
+        overflow: "hidden",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = color + "60";
+        e.currentTarget.style.background = "#111827";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = "#1e2530";
+        e.currentTarget.style.background = "#0d1117";
+      }}
+    >
+      {/* Accent line */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: color, opacity: 0.7, borderRadius: "14px 14px 0 0",
+      }} />
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 15 }}>{icon}</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{label}</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.3 }}>
+          <path d="M3 7h8M8 4l3 3-3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+
+      {/* KPI grid */}
+      {loading ? (
+        <div style={{ display: "flex", gap: 12 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ flex: 1, height: 52, background: "#161f2e", borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {kpis.length === 0 ? (
+            <span style={{ fontSize: 12, color: "#334155" }}>Click to view details</span>
+          ) : kpis.map((kpi) => (
+            <div key={kpi.label} style={{ flex: "1 1 80px", minWidth: 0 }}>
+              <div style={{ fontSize: 10, color: "#475569", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {kpi.label}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {kpi.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

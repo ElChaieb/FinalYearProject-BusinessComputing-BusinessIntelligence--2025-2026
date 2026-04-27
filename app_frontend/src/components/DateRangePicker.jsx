@@ -1,315 +1,704 @@
-// src/components/DateRangePicker.jsx
-// Drop-in replacement for Tremor's DateRangePicker with presets.
-// No external dependencies — plain JSX + Tailwind v4.
+// components/DateRangePicker.jsx
+// Full rewrite — dual calendar, sales-relevant presets, dark-mode safe, right-aligned popover.
 //
 // Usage:
-//   import { DateRangePicker } from "./DateRangePicker"
+//   import { DateRangePicker, DEFAULT_PRESETS } from "./DateRangePicker"
 //   const [range, setRange] = useState(undefined)
 //   <DateRangePicker value={range} onChange={setRange} />
 //
 // range shape: { from: Date, to: Date } | undefined
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect } from "react";
 
-// ── Presets ───────────────────────────────────────────────────
-export const DEFAULT_PRESETS = [
-  {
-    label: "Today",
-    dateRange: { from: new Date(), to: new Date() },
-  },
-  {
-    label: "Last 7 days",
-    dateRange: {
-      from: new Date(new Date().setDate(new Date().getDate() - 7)),
-      to: new Date(),
-    },
-  },
-  {
-    label: "Last 30 days",
-    dateRange: {
-      from: new Date(new Date().setDate(new Date().getDate() - 30)),
-      to: new Date(),
-    },
-  },
-  {
-    label: "Last 3 months",
-    dateRange: {
-      from: new Date(new Date().setMonth(new Date().getMonth() - 3)),
-      to: new Date(),
-    },
-  },
-  {
-    label: "Last 6 months",
-    dateRange: {
-      from: new Date(new Date().setMonth(new Date().getMonth() - 6)),
-      to: new Date(),
-    },
-  },
-  {
-    label: "Month to date",
-    dateRange: {
-      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      to: new Date(),
-    },
-  },
-  {
-    label: "Year to date",
-    dateRange: {
-      from: new Date(new Date().getFullYear(), 0, 1),
-      to: new Date(),
-    },
-  },
-]
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-// ── Helpers ───────────────────────────────────────────────────
-const fmt = (date) =>
-  date?.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+const pad = (n) => String(n).padStart(2, "0");
 
-const toInputVal = (date) =>
-  date ? date.toISOString().split("T")[0] : ""
+const fmtShort = (d) =>
+  d
+    ? `${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`
+    : null;
 
 const isSameDay = (a, b) =>
   a && b &&
-  a.getDate() === b.getDate() &&
-  a.getMonth() === b.getMonth() &&
-  a.getFullYear() === b.getFullYear()
+  a.getDate()     === b.getDate()     &&
+  a.getMonth()    === b.getMonth()    &&
+  a.getFullYear() === b.getFullYear();
 
-const matchesPreset = (range, preset) =>
-  range &&
-  isSameDay(range.from, preset.dateRange.from) &&
-  isSameDay(range.to,   preset.dateRange.to)
+const startOfMonth = (y, m) => new Date(y, m, 1);
+const endOfMonth   = (y, m) => new Date(y, m + 1, 0);
 
-// ── Calendar ──────────────────────────────────────────────────
+function addMonths(date, n) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + n);
+  return d;
+}
+
+function matchesPreset(range, preset) {
+  if (!range?.from || !range?.to) return false;
+  return (
+    isSameDay(range.from, preset.dateRange.from) &&
+    isSameDay(range.to,   preset.dateRange.to)
+  );
+}
+
+// ── Presets ────────────────────────────────────────────────────────────────────
+
+function buildPresets() {
+  const now   = new Date();
+  const y     = now.getFullYear();
+  const m     = now.getMonth();
+  const today = new Date(y, m, now.getDate());
+
+  const qStart = new Date(y, Math.floor(m / 3) * 3, 1);
+  const prevQStart = new Date(qStart);
+  prevQStart.setMonth(prevQStart.getMonth() - 3);
+  const prevQEnd = new Date(qStart);
+  prevQEnd.setDate(prevQEnd.getDate() - 1);
+
+  const prevMStart = new Date(y, m - 1, 1);
+  const prevMEnd   = new Date(y, m, 0);
+
+  return [
+    {
+      label: "This Month",
+      dateRange: { from: new Date(y, m, 1), to: today },
+    },
+    {
+      label: "Last Month",
+      dateRange: { from: prevMStart, to: prevMEnd },
+    },
+    {
+      label: "This Quarter",
+      dateRange: { from: qStart, to: today },
+    },
+    {
+      label: "Last Quarter",
+      dateRange: { from: prevQStart, to: prevQEnd },
+    },
+    {
+      label: "This Year",
+      dateRange: { from: new Date(y, 0, 1), to: today },
+    },
+    {
+      label: "Last Year",
+      dateRange: { from: new Date(y - 1, 0, 1), to: new Date(y - 1, 11, 31) },
+    },
+    {
+      label: "Last 3 Months",
+      dateRange: { from: addMonths(today, -3), to: today },
+    },
+    {
+      label: "Last 6 Months",
+      dateRange: { from: addMonths(today, -6), to: today },
+    },
+  ];
+}
+
+export const DEFAULT_PRESETS = buildPresets();
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+
 const MONTHS = [
   "January","February","March","April","May","June",
   "July","August","September","October","November","December",
-]
-const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"]
+];
+const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
-function Calendar({ month, year, onMonthChange, range, hovered, onHover, onSelect }) {
-  const firstDay = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const cells = []
+// ── Colours (dark-shell safe — inline only, no Tailwind dark:) ─────────────────
 
-  for (let i = 0; i < firstDay; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+const C = {
+  bg:           "#0d1117",
+  bgPopover:    "#111827",
+  bgHover:      "#1e2530",
+  bgRangeStrip: "#172032",
+  bgPresetActive:"#1e3a5f",
+  border:       "#1e2530",
+  borderStrong: "#2d3748",
+  accent:       "#3b82f6",
+  accentHover:  "#2563eb",
+  textPrimary:  "#f1f5f9",
+  textSecondary:"#64748b",
+  textMuted:    "#334155",
+  textAccent:   "#60a5fa",
+  today:        "#f59e0b",
+};
 
-  const isStart   = (d) => d && range?.from && isSameDay(d, range.from)
-  const isEnd     = (d) => d && range?.to   && isSameDay(d, range.to)
+// ── Calendar (single month) ────────────────────────────────────────────────────
+
+function Calendar({ month, year, onMonthChange, range, hovered, onHover, onSelect, disableNavPrev }) {
+  const firstDay    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+
+  const isStart = (d) => d && range?.from && isSameDay(d, range.from);
+  const isEnd   = (d) => d && range?.to   && isSameDay(d, range.to);
+
   const isInRange = (d) => {
-    if (!d || !range?.from) return false
-    const end = range.to || hovered
-    if (!end) return false
-    const lo = range.from < end ? range.from : end
-    const hi = range.from < end ? end : range.from
-    return d > lo && d < hi
-  }
+    if (!d || !range?.from) return false;
+    const end = range.to || hovered;
+    if (!end) return false;
+    const lo = range.from <= end ? range.from : end;
+    const hi = range.from <= end ? end : range.from;
+    return d > lo && d < hi;
+  };
 
-  const prev = () => {
-    if (month === 0) onMonthChange(11, year - 1)
-    else onMonthChange(month - 1, year)
-  }
-  const next = () => {
-    if (month === 11) onMonthChange(0, year + 1)
-    else onMonthChange(month + 1, year)
-  }
+  const isRangeStart = (d) => {
+    // for strip — is the day to the right of it in range?
+    if (!d || !range?.from) return false;
+    const end = range.to || hovered;
+    if (!end) return false;
+    return isSameDay(d, range.from < end ? range.from : end);
+  };
+
+  const isRangeEnd = (d) => {
+    if (!d || !range?.from) return false;
+    const end = range.to || hovered;
+    if (!end) return false;
+    return isSameDay(d, range.from < end ? end : range.from);
+  };
+
+  const prev = () => month === 0  ? onMonthChange(11, year - 1) : onMonthChange(month - 1, year);
+  const next = () => month === 11 ? onMonthChange(0,  year + 1) : onMonthChange(month + 1, year);
 
   return (
-    <div className="p-3 select-none">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+    <div style={{ padding: "16px 14px", userSelect: "none", minWidth: 224 }}>
+      {/* Month nav */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <button
           onClick={prev}
-          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+          disabled={disableNavPrev}
+          style={{
+            width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 6, border: "none", background: "transparent", cursor: disableNavPrev ? "default" : "pointer",
+            color: disableNavPrev ? C.textMuted : C.textSecondary,
+          }}
+          onMouseEnter={e => { if (!disableNavPrev) e.currentTarget.style.background = C.bgHover; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-50">
+
+        <span style={{ fontSize: 13, fontWeight: 500, color: C.textPrimary }}>
           {MONTHS[month]} {year}
         </span>
+
         <button
           onClick={next}
-          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+          style={{
+            width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 6, border: "none", background: "transparent", cursor: "pointer",
+            color: C.textSecondary,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.bgHover; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 mb-1">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
         {DAYS.map((d) => (
-          <div key={d} className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 py-1">
+          <div key={d} style={{ textAlign: "center", fontSize: 10, fontWeight: 600, color: C.textMuted, padding: "2px 0", letterSpacing: "0.04em" }}>
             {d}
           </div>
         ))}
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px 0" }}>
         {cells.map((d, i) => {
-          if (!d) return <div key={`e-${i}`} />
-          const start   = isStart(d)
-          const end     = isEnd(d)
-          const inRange = isInRange(d)
-          const today   = isSameDay(d, new Date())
+          if (!d) return <div key={`e-${i}`} />;
+
+          const start   = isStart(d);
+          const end     = isEnd(d);
+          const inRange = isInRange(d);
+          const rStart  = isRangeStart(d);
+          const rEnd    = isRangeEnd(d);
+          const isToday = isSameDay(d, new Date());
+          const isSelected = start || end;
+
+          // range strip: full-width background connecting selected days
+          const showStripRight = rStart && !isSameDay(range?.from, range?.to || hovered);
+          const showStripLeft  = rEnd   && !isSameDay(range?.from, range?.to || hovered);
+          const colIndex = (firstDay + d.getDate() - 1) % 7;
+          const isLastCol  = colIndex === 6;
+          const isFirstCol = colIndex === 0;
 
           return (
             <div
               key={d.toISOString()}
-              className={[
-                "relative flex items-center justify-center h-8 cursor-pointer text-sm transition-colors",
-                inRange
-                  ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-                  : "",
-                start || end
-                  ? "bg-blue-600 text-white rounded-full z-10"
-                  : "text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full",
-              ].join(" ")}
+              style={{ position: "relative", height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}
               onMouseEnter={() => onHover(d)}
               onMouseLeave={() => onHover(null)}
               onClick={() => onSelect(d)}
             >
-              {today && !start && !end && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-600 dark:bg-blue-400" />
+              {/* Range strip background */}
+              {(inRange || showStripRight || showStripLeft) && (
+                <div style={{
+                  position: "absolute",
+                  top: 4, bottom: 4,
+                  left:  (showStripRight && !isFirstCol) || inRange ? 0 : "50%",
+                  right: (showStripLeft  && !isLastCol)  || inRange ? 0 : "50%",
+                  background: C.bgRangeStrip,
+                  zIndex: 0,
+                }} />
               )}
-              {d.getDate()}
+
+              {/* Day circle */}
+              <div style={{
+                position: "relative", zIndex: 1,
+                width: 28, height: 28,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                borderRadius: "50%",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: isSelected ? 600 : isToday ? 500 : 400,
+                background: isSelected ? C.accent : "transparent",
+                color: isSelected ? "#fff" : inRange ? C.textAccent : C.textPrimary,
+                transition: "background 0.1s",
+              }}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = C.bgHover; }}
+                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
+              >
+                {isToday && !isSelected && (
+                  <span style={{
+                    position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)",
+                    width: 3, height: 3, borderRadius: "50%", background: C.today,
+                  }} />
+                )}
+                {d.getDate()}
+              </div>
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
-// ── Main component ────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────────
+
 export function DateRangePicker({
   value,
   onChange,
   presets = DEFAULT_PRESETS,
-  className = "",
   placeholder = "Select date range",
 }) {
-  const [open, setOpen]       = useState(false)
-  const [hovered, setHovered] = useState(null)
-  const [picking, setPicking] = useState(null) // first date picked, waiting for second
-  const [month, setMonth]     = useState(new Date().getMonth())
-  const [year, setYear]       = useState(new Date().getFullYear())
+  const today = new Date();
 
-  const ref = useRef(null)
+  const [open,    setOpen]    = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const [picking, setPicking] = useState(null); // first selected date, awaiting second
+  const [leftMonth,  setLeftMonth]  = useState(today.getMonth() === 0 ? 11 : today.getMonth() - 1);
+  const [leftYear,   setLeftYear]   = useState(today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear());
+  const [rightMonth, setRightMonth] = useState(today.getMonth());
+  const [rightYear,  setRightYear]  = useState(today.getFullYear());
 
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
+  const ref = useRef(null);
 
-  const handleSelect = (d) => {
-    if (!picking) {
-      setPicking(d)
-      onChange({ from: d, to: undefined })
-    } else {
-      const from = picking < d ? picking : d
-      const to   = picking < d ? d : picking
-      onChange({ from, to })
-      setPicking(null)
-      setOpen(false)
+  // Keep right always one ahead of left
+  function setLeft(m, y) {
+    setLeftMonth(m);
+    setLeftYear(y);
+    // advance right if it would be behind or equal
+    const rightDate = new Date(rightYear, rightMonth, 1);
+    const newLeft   = new Date(y, m, 1);
+    if (rightDate <= newLeft) {
+      const next = addMonths(newLeft, 1);
+      setRightMonth(next.getMonth());
+      setRightYear(next.getFullYear());
     }
   }
 
-  const handlePreset = (preset) => {
-    onChange(preset.dateRange)
-    setPicking(null)
-    setOpen(false)
+  function setRight(m, y) {
+    setRightMonth(m);
+    setRightYear(y);
+    const leftDate = new Date(leftYear, leftMonth, 1);
+    const newRight = new Date(y, m, 1);
+    if (leftDate >= newRight) {
+      const prev = addMonths(newRight, -1);
+      setLeftMonth(prev.getMonth());
+      setLeftYear(prev.getFullYear());
+    }
   }
 
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setPicking(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Sync calendars to selected range when opening
+  function handleOpen() {
+    if (!open && value?.from) {
+      const from = value.from;
+      const to   = value.to || from;
+      setLeftMonth(from.getMonth());
+      setLeftYear(from.getFullYear());
+      // right = to's month, but ensure it's after left
+      const rightD = isSameDay(from, to)
+        ? addMonths(from, 1)
+        : to;
+      setRightMonth(rightD.getMonth());
+      setRightYear(rightD.getFullYear());
+    }
+    setOpen((o) => !o);
+  }
+
+  // Typed input state — DD/MM/YYYY strings shown in the footer inputs
+  const toInputStr = (d) =>
+    d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : "";
+
+  const [fromInput, setFromInput] = useState(() => toInputStr(value?.from));
+  const [toInput,   setToInput]   = useState(() => toInputStr(value?.to));
+  const [fromErr,   setFromErr]   = useState(false);
+  const [toErr,     setToErr]     = useState(false);
+
+  // Keep inputs in sync when value changes externally (presets, calendar clicks)
+  useEffect(() => { setFromInput(toInputStr(value?.from)); }, [value?.from]);
+  useEffect(() => { setToInput(toInputStr(value?.to));     }, [value?.to]);
+
+  // Parse DD/MM/YYYY → Date | null
+  function parseInput(str) {
+    const clean = str.replace(/[^\d/]/g, "");
+    const parts = clean.split("/");
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts.map(Number);
+    if (!dd || !mm || !yyyy || yyyy < 1900 || yyyy > 2100) return null;
+    const d = new Date(yyyy, mm - 1, dd);
+    if (isNaN(d) || d.getDate() !== dd || d.getMonth() !== mm - 1) return null;
+    return d;
+  }
+
+  // Auto-insert slashes as user types (e.g. "01" → "01/")
+  function formatTyping(raw, prev) {
+    const digits = raw.replace(/\D/g, "").slice(0, 8);
+    let out = "";
+    for (let i = 0; i < digits.length; i++) {
+      if (i === 2 || i === 4) out += "/";
+      out += digits[i];
+    }
+    return out;
+  }
+
+  function handleFromInput(raw) {
+    const val = formatTyping(raw);
+    setFromInput(val);
+    const d = parseInput(val);
+    if (d) {
+      setFromErr(false);
+      const to = value?.to && d <= value.to ? value.to : undefined;
+      onChange({ from: d, to });
+      // Navigate left calendar to that month
+      setLeftMonth(d.getMonth());
+      setLeftYear(d.getFullYear());
+      const rightD = to ? to : addMonths(d, 1);
+      setRightMonth(rightD.getMonth());
+      setRightYear(rightD.getFullYear());
+    } else {
+      setFromErr(val.length === 10); // only flag error on complete input
+    }
+  }
+
+  function handleToInput(raw) {
+    const val = formatTyping(raw);
+    setToInput(val);
+    const d = parseInput(val);
+    if (d) {
+      setToErr(false);
+      const from = value?.from && value.from <= d ? value.from : undefined;
+      onChange({ from: from ?? d, to: d });
+      // Navigate right calendar to that month
+      setRightMonth(d.getMonth());
+      setRightYear(d.getFullYear());
+      if (from) { setLeftMonth(from.getMonth()); setLeftYear(from.getFullYear()); }
+    } else {
+      setToErr(val.length === 10);
+    }
+  }
+
+  const handleSelect = (d) => {
+    if (!picking) {
+      setPicking(d);
+      onChange({ from: d, to: undefined });
+    } else {
+      const from = picking <= d ? picking : d;
+      const to   = picking <= d ? d : picking;
+      onChange({ from, to });
+      setPicking(null);
+      setOpen(false);
+    }
+  };
+
+  const handlePreset = (preset) => {
+    onChange(preset.dateRange);
+    setPicking(null);
+    setOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange(undefined);
+    setPicking(null);
+    setFromInput("");
+    setToInput("");
+    setFromErr(false);
+    setToErr(false);
+  };
+
+  // Display label
+  const activeRange = picking ? { from: picking, to: hovered || undefined } : value;
   const label = value?.from
     ? value.to
-      ? `${fmt(value.from)} – ${fmt(value.to)}`
-      : fmt(value.from)
-    : placeholder
+      ? `${fmtShort(value.from)}  –  ${fmtShort(value.to)}`
+      : fmtShort(value.from)
+    : placeholder;
 
-  const activePreset = presets.findIndex((p) => matchesPreset(value, p))
+  const activePresetIdx = presets.findIndex((p) => matchesPreset(value, p));
 
   return (
-    <div ref={ref} className={`relative inline-block ${className}`}>
-      {/* Trigger button */}
+    <div ref={ref} style={{ position: "relative", display: "inline-block", width: "100%" }}>
+      {/* Trigger */}
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-50 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors shadow-xs"
+        onClick={handleOpen}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          width: "100%", padding: "7px 12px",
+          background: open ? "#111827" : C.bg,
+          border: `1px solid ${open ? C.accent + "60" : C.border}`,
+          borderRadius: 8, cursor: "pointer",
+          fontSize: 12, color: value?.from ? C.textPrimary : C.textSecondary,
+          transition: "all 0.15s", textAlign: "left",
+        }}
       >
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0 text-gray-400 dark:text-gray-500">
-          <rect x="1" y="3" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-          <path d="M1 6h13" stroke="currentColor" strokeWidth="1.2"/>
-          <path d="M5 1v2M10 1v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+        {/* Calendar icon */}
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, color: C.textSecondary }}>
+          <rect x="1" y="2.5" width="12" height="10.5" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+          <path d="M1 6h12" stroke="currentColor" strokeWidth="1.2"/>
+          <path d="M4.5 1v2.5M9.5 1v2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
-        <span className={`flex-1 text-left truncate ${!value?.from ? "text-gray-400 dark:text-gray-500" : ""}`}>
+
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {label}
         </span>
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0 text-gray-400">
-          <path d="M3 5l4.5 4.5L12 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+
+        {/* Clear × */}
+        {value && (
+          <span
+            onClick={handleClear}
+            style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1, cursor: "pointer", padding: "0 2px" }}
+            onMouseEnter={e => e.currentTarget.style.color = C.textPrimary}
+            onMouseLeave={e => e.currentTarget.style.color = C.textSecondary}
+          >×</span>
+        )}
+
+        {/* Chevron */}
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, color: C.textMuted, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
 
       {/* Popover */}
       {open && (
-        <div className="absolute z-50 mt-1 left-0 flex rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-xl overflow-hidden">
+        <div style={{
+          position: "absolute", zIndex: 9999,
+          top: "calc(100% + 6px)", right: 0,
+          display: "flex",
+          background: C.bgPopover,
+          border: `1px solid ${C.border}`,
+          borderRadius: 12,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          overflow: "hidden",
+          minWidth: 560,
+        }}>
 
-          {/* Presets sidebar */}
-          <div className="flex flex-col gap-0.5 p-2 border-r border-gray-100 dark:border-gray-800 min-w-[140px]">
+          {/* ── Presets sidebar ─────────────────────────────────── */}
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 2,
+            padding: "14px 10px",
+            borderRight: `1px solid ${C.border}`,
+            minWidth: 140,
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", padding: "2px 8px 8px" }}>
+              Presets
+            </div>
             {presets.map((p, i) => (
               <button
                 key={p.label}
                 onClick={() => handlePreset(p)}
-                className={[
-                  "text-left text-sm px-3 py-1.5 rounded-md transition-colors w-full",
-                  i === activePreset
-                    ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
-                ].join(" ")}
+                style={{
+                  textAlign: "left", fontSize: 12, padding: "6px 10px",
+                  borderRadius: 6, border: "none", cursor: "pointer",
+                  fontWeight: i === activePresetIdx ? 500 : 400,
+                  background: i === activePresetIdx ? C.bgPresetActive : "transparent",
+                  color: i === activePresetIdx ? C.textAccent : C.textSecondary,
+                  transition: "all 0.12s",
+                }}
+                onMouseEnter={e => { if (i !== activePresetIdx) { e.currentTarget.style.background = C.bgHover; e.currentTarget.style.color = C.textPrimary; }}}
+                onMouseLeave={e => { if (i !== activePresetIdx) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textSecondary; }}}
               >
                 {p.label}
               </button>
             ))}
           </div>
 
-          {/* Calendar */}
-          <div>
-            <Calendar
-              month={month}
-              year={year}
-              onMonthChange={(m, y) => { setMonth(m); setYear(y) }}
-              range={picking ? { from: picking, to: undefined } : value}
-              hovered={hovered}
-              onHover={setHovered}
-              onSelect={handleSelect}
-            />
+          {/* ── Dual calendars ──────────────────────────────────── */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
+              {/* Left calendar */}
+              <div style={{ borderRight: `1px solid ${C.border}` }}>
+                <Calendar
+                  month={leftMonth}
+                  year={leftYear}
+                  onMonthChange={setLeft}
+                  range={activeRange}
+                  hovered={hovered}
+                  onHover={setHovered}
+                  onSelect={handleSelect}
+                  disableNavPrev={false}
+                />
+              </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-800">
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                {picking
-                  ? "Select end date"
-                  : value?.from && value?.to
-                    ? `${fmt(value.from)} – ${fmt(value.to)}`
-                    : "Select start date"}
-              </span>
+              {/* Right calendar — prev nav disabled when it would go behind left */}
+              <div>
+                <Calendar
+                  month={rightMonth}
+                  year={rightYear}
+                  onMonthChange={setRight}
+                  range={activeRange}
+                  hovered={hovered}
+                  onHover={setHovered}
+                  onSelect={handleSelect}
+                  disableNavPrev={
+                    new Date(rightYear, rightMonth, 1) <=
+                    addMonths(new Date(leftYear, leftMonth, 1), 1)
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Footer — typed inputs + actions */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 14px",
+              borderTop: `1px solid ${C.border}`,
+            }}>
+              {/* From input */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <label style={{ fontSize: 9, fontWeight: 600, color: C.textMuted, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                  From
+                </label>
+                <input
+                  type="text"
+                  value={fromInput}
+                  placeholder="DD/MM/YYYY"
+                  maxLength={10}
+                  onChange={e => handleFromInput(e.target.value)}
+                  style={{
+                    width: 96, padding: "5px 8px",
+                    background: "#0d1117",
+                    border: `1px solid ${fromErr ? "#ef4444" : fromInput && !fromErr ? C.accent + "80" : C.borderStrong}`,
+                    borderRadius: 6, fontSize: 12,
+                    color: fromErr ? "#ef4444" : C.textPrimary,
+                    outline: "none", fontFamily: "inherit",
+                    letterSpacing: "0.02em",
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = fromErr ? "#ef4444" : C.accent; }}
+                  onBlur={e  => { e.currentTarget.style.borderColor = fromErr ? "#ef4444" : fromInput && !fromErr ? C.accent + "80" : C.borderStrong; }}
+                />
+              </div>
+
+              {/* Arrow */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, marginTop: 14, color: C.textMuted }}>
+                <path d="M2 7h10M8 4l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+
+              {/* To input */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <label style={{ fontSize: 9, fontWeight: 600, color: C.textMuted, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                  To
+                </label>
+                <input
+                  type="text"
+                  value={toInput}
+                  placeholder="DD/MM/YYYY"
+                  maxLength={10}
+                  onChange={e => handleToInput(e.target.value)}
+                  style={{
+                    width: 96, padding: "5px 8px",
+                    background: "#0d1117",
+                    border: `1px solid ${toErr ? "#ef4444" : toInput && !toErr ? C.accent + "80" : C.borderStrong}`,
+                    borderRadius: 6, fontSize: 12,
+                    color: toErr ? "#ef4444" : C.textPrimary,
+                    outline: "none", fontFamily: "inherit",
+                    letterSpacing: "0.02em",
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = toErr ? "#ef4444" : C.accent; }}
+                  onBlur={e  => { e.currentTarget.style.borderColor = toErr ? "#ef4444" : toInput && !toErr ? C.accent + "80" : C.borderStrong; }}
+                />
+              </div>
+
+              {/* Hint */}
+              {picking && (
+                <span style={{ fontSize: 10, color: C.textAccent, marginTop: 14, marginLeft: 2 }}>
+                  Pick end date
+                </span>
+              )}
+
+              {/* Spacer */}
+              <div style={{ flex: 1 }} />
+
+              {/* Clear */}
               {value && (
                 <button
-                  onClick={() => { onChange(undefined); setPicking(null) }}
-                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  onClick={handleClear}
+                  style={{
+                    fontSize: 11, padding: "5px 10px", marginTop: 14,
+                    background: "transparent",
+                    border: `1px solid ${C.borderStrong}`,
+                    borderRadius: 6, cursor: "pointer",
+                    color: C.textSecondary, fontFamily: "inherit",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = C.textPrimary; e.currentTarget.style.borderColor = C.textSecondary; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = C.textSecondary; e.currentTarget.style.borderColor = C.borderStrong; }}
                 >
                   Clear
                 </button>
               )}
+
+              {/* Done */}
+              <button
+                onClick={() => { setOpen(false); setPicking(null); }}
+                style={{
+                  fontSize: 11, padding: "5px 14px", marginTop: 14,
+                  background: C.accent, border: "none",
+                  borderRadius: 6, cursor: "pointer",
+                  color: "#fff", fontWeight: 500, fontFamily: "inherit",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.accentHover; }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.accent; }}
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
