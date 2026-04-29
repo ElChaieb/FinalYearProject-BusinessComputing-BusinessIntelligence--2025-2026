@@ -2,7 +2,11 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const ALL_ROLES = ["Administrateur BI","Directeur Général","Directeur Commercial","Responsable d'Agence","Commercial"];
+const ALL_ROLES = [  "Administrateur BI",
+  "General Director",
+  "Commercial Director",
+  "Agency Manager",
+  "Commercial"];
 const DASHBOARD_ROLES = [...ALL_ROLES];
 
 const DASHBOARD_SECTIONS = [

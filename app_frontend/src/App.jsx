@@ -18,9 +18,9 @@ import ClientsPage        from "./pages/dashboards/ClientsPage";
 
 const DASHBOARD_ROLES = [
   "Administrateur BI",
-  "Directeur Général",
-  "Directeur Commercial",
-  "Responsable d'Agence",
+  "General Director",
+  "Commercial Director",
+  "Agency Manager",
   "Commercial",
 ];
 
