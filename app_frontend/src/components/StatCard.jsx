@@ -1,28 +1,32 @@
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
-
+// StatCard.jsx — Power BI light theme
 export default function StatCard({ name, stat, change, changeType }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex items-center justify-between gap-2">
-        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+    <div style={{
+      background: "#fff",
+      border: "1px solid #edebe9",
+      borderRadius: 4,
+      padding: "16px 18px",
+      boxShadow: "0 1px 3px rgba(0,0,0,.07)",
+      borderTop: "3px solid #0078d4",
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.04em" }}>
           {name}
-        </dt>
-        <span
-          className={classNames(
-            changeType === "positive"
-              ? "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-400 dark:ring-emerald-400/20"
-              : "bg-red-50 text-red-700 ring-red-200 dark:bg-red-400/10 dark:text-red-400 dark:ring-red-400/20",
-            "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-          )}
-        >
-          {change}
         </span>
+        {change && (
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 2,
+            background: changeType === "positive" ? "#dff6dd" : "#fde7e9",
+            color: changeType === "positive" ? "#107c10" : "#d13438",
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}>
+            {change}
+          </span>
+        )}
       </div>
-      <dd className="mt-2 text-2xl font-semibold text-gray-900 dark:text-white">
+      <div style={{ marginTop: 10, fontSize: 22, fontWeight: 700, color: "#201f1e", letterSpacing: "-0.02em" }}>
         {stat}
-      </dd>
+      </div>
     </div>
   );
 }

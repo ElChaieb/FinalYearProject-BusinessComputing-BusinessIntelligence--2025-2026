@@ -181,24 +181,26 @@ def global_agency_revenue_summary(
     prev_from = dr["from_date"] - timedelta(days=period_days)
     prev_to   = dr["from_date"] - timedelta(days=1)
 
-    current = _query("""
-        SELECT agency_name, COALESCE(SUM(final_price), 0) AS revenue
+    # One query covers both periods using conditional aggregation — half the round-trips.
+    combined = _query("""
+        SELECT
+            agency_name,
+            COALESCE(SUM(CASE WHEN sale_date BETWEEN %s AND %s THEN final_price END), 0) AS current_revenue,
+            COALESCE(SUM(CASE WHEN sale_date BETWEEN %s AND %s THEN final_price END), 0) AS prev_revenue
         FROM fact_sales
         WHERE sale_date BETWEEN %s AND %s
           AND agency_name IS NOT NULL
         GROUP BY agency_name
-        ORDER BY revenue DESC
-    """, (dr["from_date"], dr["to_date"]))
+        ORDER BY current_revenue DESC
+    """, (
+        dr["from_date"], dr["to_date"],
+        prev_from, prev_to,
+        prev_from, dr["to_date"],   # full span covers both periods in one scan
+    ))
 
-    prev = _query("""
-        SELECT agency_name, COALESCE(SUM(final_price), 0) AS revenue
-        FROM fact_sales
-        WHERE sale_date BETWEEN %s AND %s
-          AND agency_name IS NOT NULL
-        GROUP BY agency_name
-    """, (prev_from, prev_to))
-
-    prev_map = {r["agency_name"]: float(r["revenue"]) for r in prev}
+    # Reshape to match the original variable names the loop below expects
+    current  = [{"agency_name": r["agency_name"], "revenue": r["current_revenue"]} for r in combined]
+    prev_map = {r["agency_name"]: float(r["prev_revenue"]) for r in combined}
 
     STROKES = ["#3b82f6", "#06b6d4", "#8b5cf6", "#f59e0b", "#ec4899",
                "#10b981", "#ef4444", "#a78bfa", "#f97316", "#14b8a6"]
@@ -236,11 +238,11 @@ def global_section2_kpis(
     r = _one("""
         SELECT
             (SELECT COUNT(*) FROM fact_opportunities
-             WHERE deleted = FALSE AND created_date BETWEEN %s AND %s) AS total_opportunities,
+             WHERE created_date BETWEEN %s AND %s) AS total_opportunities,
             (SELECT COUNT(*) FROM fact_quotes
-             WHERE deleted = FALSE AND created_date BETWEEN %s AND %s) AS total_quotes,
+             WHERE created_date BETWEEN %s AND %s) AS total_quotes,
             (SELECT COUNT(*) FROM fact_sales
-             WHERE sale_date BETWEEN %s AND %s)                        AS total_sales
+             WHERE sale_date BETWEEN %s AND %s)    AS total_sales
     """, (dr["from_date"], dr["to_date"]) * 3)
 
     return {
@@ -269,14 +271,14 @@ def global_funnel_by_month(
             SELECT DATE_TRUNC('month', created_date)::date AS m,
                    COUNT(*) AS cnt
             FROM fact_opportunities
-            WHERE deleted = FALSE AND created_date BETWEEN %s AND %s
+            WHERE created_date BETWEEN %s AND %s
             GROUP BY 1
         ),
         quotes AS (
             SELECT DATE_TRUNC('month', created_date)::date AS m,
                    COUNT(*) AS cnt
             FROM fact_quotes
-            WHERE deleted = FALSE AND created_date BETWEEN %s AND %s
+            WHERE created_date BETWEEN %s AND %s
             GROUP BY 1
         ),
         sales AS (
@@ -323,47 +325,16 @@ def global_agency_funnel(
     Returns list of { agency, opportunities, quotes, sales, convOQ, convQS }
     """
     rows = _query("""
-        SELECT
-            COALESCE(fo.agency_name, fq.agency_name, fs.agency_name) AS agency,
-            COUNT(DISTINCT fo.oppo_id)   AS opportunities,
-            COUNT(DISTINCT fq.quote_id)  AS quotes,
-            COUNT(DISTINCT fs.sale_id)   AS sales
-        FROM (
-            SELECT agency_name, oppo_id FROM fact_opportunities
-            WHERE deleted = FALSE AND created_date BETWEEN %s AND %s
-            UNION ALL
-            SELECT agency_name, NULL FROM fact_quotes
-            WHERE deleted = FALSE AND created_date BETWEEN %s AND %s
-            UNION ALL
-            SELECT agency_name, NULL FROM fact_sales
-            WHERE sale_date BETWEEN %s AND %s
-        ) combined(agency_name, oppo_id)
-        FULL OUTER JOIN fact_opportunities fo
-            ON fo.agency_name = combined.agency_name
-            AND fo.deleted = FALSE AND fo.created_date BETWEEN %s AND %s
-        FULL OUTER JOIN fact_quotes fq
-            ON fq.agency_name = combined.agency_name
-            AND fq.deleted = FALSE AND fq.created_date BETWEEN %s AND %s
-        FULL OUTER JOIN fact_sales fs
-            ON fs.agency_name = combined.agency_name
-            AND fs.sale_date BETWEEN %s AND %s
-        WHERE COALESCE(fo.agency_name, fq.agency_name, fs.agency_name) IS NOT NULL
-        GROUP BY 1
-        ORDER BY sales DESC
-    """, (dr["from_date"], dr["to_date"]) * 6)
-
-    # Simpler and correct approach — separate queries per entity
-    rows = _query("""
         WITH oppos AS (
             SELECT agency_name, COUNT(*) AS cnt
             FROM fact_opportunities
-            WHERE deleted = FALSE AND created_date BETWEEN %s AND %s
+            WHERE created_date BETWEEN %s AND %s
             GROUP BY agency_name
         ),
         quotes AS (
             SELECT agency_name, COUNT(*) AS cnt
             FROM fact_quotes
-            WHERE deleted = FALSE AND created_date BETWEEN %s AND %s
+            WHERE created_date BETWEEN %s AND %s
             GROUP BY agency_name
         ),
         sales AS (
@@ -373,11 +344,11 @@ def global_agency_funnel(
             GROUP BY agency_name
         ),
         agencies AS (
-            SELECT DISTINCT agency_name FROM (
-                SELECT agency_name FROM fact_opportunities WHERE created_date BETWEEN %s AND %s
-                UNION SELECT agency_name FROM fact_quotes    WHERE created_date BETWEEN %s AND %s
-                UNION SELECT agency_name FROM fact_sales     WHERE sale_date    BETWEEN %s AND %s
-            ) a WHERE agency_name IS NOT NULL
+            SELECT agency_name FROM oppos
+            UNION
+            SELECT agency_name FROM quotes
+            UNION
+            SELECT agency_name FROM sales
         )
         SELECT
             ag.agency_name                         AS agency,
@@ -388,11 +359,9 @@ def global_agency_funnel(
         LEFT JOIN oppos  o ON o.agency_name = ag.agency_name
         LEFT JOIN quotes q ON q.agency_name = ag.agency_name
         LEFT JOIN sales  s ON s.agency_name = ag.agency_name
+        WHERE ag.agency_name IS NOT NULL
         ORDER BY sales DESC
     """, (
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
         dr["from_date"], dr["to_date"],
         dr["from_date"], dr["to_date"],
         dr["from_date"], dr["to_date"],
@@ -520,29 +489,24 @@ def global_agency_vehicles(
               AND fs.agency_name IS NOT NULL
             GROUP BY fs.agency_name, dv.category, dv.brand
         ),
-        totals AS (
-            SELECT agency_name, SUM(cnt) AS total_sales
-            FROM base GROUP BY agency_name
-        ),
-        top_cat AS (
-            SELECT DISTINCT ON (agency_name)
-                agency_name, category AS top_category
-            FROM base ORDER BY agency_name, cnt DESC
-        ),
-        top_brand AS (
-            SELECT DISTINCT ON (agency_name)
-                agency_name, brand AS top_brand
-            FROM base ORDER BY agency_name, cnt DESC
+        ranked AS (
+            SELECT
+                agency_name,
+                category,
+                brand,
+                cnt,
+                SUM(cnt)  OVER (PARTITION BY agency_name)                    AS total_sales,
+                ROW_NUMBER() OVER (PARTITION BY agency_name ORDER BY cnt DESC) AS rn
+            FROM base
         )
         SELECT
-            t.agency_name  AS agency,
-            t.total_sales,
-            c.top_category,
-            b.top_brand
-        FROM totals t
-        JOIN top_cat   c ON c.agency_name = t.agency_name
-        JOIN top_brand b ON b.agency_name = t.agency_name
-        ORDER BY t.total_sales DESC
+            agency_name  AS agency,
+            total_sales,
+            category     AS top_category,
+            brand        AS top_brand
+        FROM ranked
+        WHERE rn = 1
+        ORDER BY total_sales DESC
     """, (dr["from_date"], dr["to_date"]))
 
     return [{
@@ -608,17 +572,20 @@ def global_clients_by_state(
     states_placeholder = ",".join(["%s"] * len(TUNISIA_STATES))
 
     rows = _query(f"""
-        WITH first_sale AS (
-            SELECT client_id, MIN(sale_date) AS first_date
-            FROM fact_sales
-            GROUP BY client_id
-        ),
-        period_clients AS (
+        WITH period_clients AS (
             SELECT DISTINCT fs.client_id, dc.city
             FROM fact_sales fs
             JOIN dim_client dc ON dc.client_id = fs.client_id
             WHERE fs.sale_date BETWEEN %s AND %s
               AND dc.city IN ({states_placeholder})
+        ),
+        first_sale AS (
+            -- Only compute first-sale date for clients who appear in the period,
+            -- not the entire fact_sales table.
+            SELECT fs.client_id, MIN(fs.sale_date) AS first_date
+            FROM fact_sales fs
+            WHERE fs.client_id IN (SELECT client_id FROM period_clients)
+            GROUP BY fs.client_id
         )
         SELECT
             pc.city,
@@ -656,18 +623,20 @@ def global_agency_clients(
     states_placeholder = ",".join(["%s"] * len(TUNISIA_STATES))
 
     rows = _query(f"""
-        WITH first_sale AS (
-            SELECT client_id, MIN(sale_date) AS first_date
-            FROM fact_sales
-            GROUP BY client_id
-        ),
-        period_clients AS (
+        WITH period_clients AS (
             SELECT DISTINCT fs.client_id, fs.agency_name
             FROM fact_sales fs
             JOIN dim_client dc ON dc.client_id = fs.client_id
             WHERE fs.sale_date BETWEEN %s AND %s
               AND dc.city IN ({states_placeholder})
               AND fs.agency_name IS NOT NULL
+        ),
+        first_sale AS (
+            -- Scoped to only clients who appear in the period — avoids full table scan.
+            SELECT fs.client_id, MIN(fs.sale_date) AS first_date
+            FROM fact_sales fs
+            WHERE fs.client_id IN (SELECT client_id FROM period_clients)
+            GROUP BY fs.client_id
         )
         SELECT
             pc.agency_name                                                   AS agency,
@@ -726,23 +695,23 @@ def agency_kpis(
         else user.agency_name
     )
     r = _one("""
-        SELECT
-            COUNT(DISTINCT fs.sale_id)                                AS sales,
-            COALESCE(SUM(fs.final_price), 0)                          AS revenue,
-            COUNT(DISTINCT fo.oppo_id)                                AS opportunities,
-            COUNT(DISTINCT fq.quote_id)                               AS quotes
-        FROM (SELECT 1) dummy
-        LEFT JOIN fact_opportunities fo
-            ON fo.agency_name = %s
-            AND fo.deleted = FALSE
-            AND fo.created_date BETWEEN %s AND %s
-        LEFT JOIN fact_quotes fq
-            ON fq.agency_name = %s
-            AND fq.deleted = FALSE
-            AND fq.created_date BETWEEN %s AND %s
-        LEFT JOIN fact_sales fs
-            ON fs.agency_name = %s
-            AND fs.sale_date BETWEEN %s AND %s
+        WITH o AS (
+            SELECT COUNT(*) AS cnt
+            FROM fact_opportunities
+            WHERE agency_name = %s AND created_date BETWEEN %s AND %s
+        ),
+        q AS (
+            SELECT COUNT(*) AS cnt
+            FROM fact_quotes
+            WHERE agency_name = %s AND created_date BETWEEN %s AND %s
+        ),
+        s AS (
+            SELECT COUNT(*) AS cnt, COALESCE(SUM(final_price), 0) AS rev
+            FROM fact_sales
+            WHERE agency_name = %s AND sale_date BETWEEN %s AND %s
+        )
+        SELECT o.cnt AS opportunities, q.cnt AS quotes, s.cnt AS sales, s.rev AS revenue
+        FROM o, q, s
     """, (
         agency, dr["from_date"], dr["to_date"],
         agency, dr["from_date"], dr["to_date"],
@@ -820,8 +789,9 @@ def agency_commercials(
             du.user_id,
             du.first_name || ' ' || du.last_name  AS name,
             du.email,
-            COUNT(DISTINCT fs.sale_id)             AS sales,
-            COALESCE(SUM(fs.final_price), 0)       AS revenue,
+            COUNT(DISTINCT CASE WHEN fs.sale_date BETWEEN %s AND %s THEN fs.sale_id END)       AS sales,
+            COALESCE(SUM(CASE WHEN fs.sale_date BETWEEN %s AND %s THEN fs.final_price END), 0) AS revenue,
+            COALESCE(SUM(CASE WHEN fs.sale_date BETWEEN %s AND %s THEN fs.final_price END), 0) AS prev_revenue,
             COUNT(DISTINCT fq.quote_id)            AS quotes
         FROM dim_user du
         LEFT JOIN fact_sales fs
@@ -829,36 +799,26 @@ def agency_commercials(
             AND fs.sale_date BETWEEN %s AND %s
         LEFT JOIN fact_quotes fq
             ON fq.user_id = du.user_id
-            AND fq.deleted = FALSE
             AND fq.created_date BETWEEN %s AND %s
         WHERE du.agency_name = %s
           AND du.role = 'Commercial'
         GROUP BY du.user_id, du.first_name, du.last_name, du.email
         ORDER BY sales DESC
     """, (
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
+        dr["from_date"], dr["to_date"],          # sales COUNT filter
+        dr["from_date"], dr["to_date"],          # revenue SUM filter
+        prev_from, prev_to,                      # prev_revenue SUM filter
+        prev_from, dr["to_date"],                # full span for the JOIN
+        dr["from_date"], dr["to_date"],          # quotes date filter
         agency,
     ))
-
-    # Previous period for % change
-    prev_rows = _query("""
-        SELECT du.user_id, COALESCE(SUM(fs.final_price), 0) AS revenue
-        FROM dim_user du
-        LEFT JOIN fact_sales fs ON fs.user_id = du.user_id
-            AND fs.sale_date BETWEEN %s AND %s
-        WHERE du.agency_name = %s AND du.role = 'Commercial'
-        GROUP BY du.user_id
-    """, (prev_from, prev_to, agency))
-
-    prev_map = {r["user_id"]: float(r["revenue"]) for r in prev_rows}
 
     result = []
     for r in rows:
         sales  = int(r["sales"])
         quotes = int(r["quotes"])
         rev    = float(r["revenue"])
-        prev_v = prev_map.get(r["user_id"], 0)
+        prev_v = float(r["prev_revenue"])
 
         if prev_v > 0:
             pct = round((rev - prev_v) / prev_v * 100, 1)
@@ -996,23 +956,23 @@ def me_recent_sales(
 
 def _commercial_kpis_for(uid: int, dr: dict) -> dict:
     r = _one("""
-        SELECT
-            COUNT(DISTINCT fs.sale_id)            AS sales,
-            COALESCE(SUM(fs.final_price), 0)       AS revenue,
-            COUNT(DISTINCT fo.oppo_id)             AS opportunities,
-            COUNT(DISTINCT fq.quote_id)            AS quotes
-        FROM (SELECT 1) dummy
-        LEFT JOIN fact_opportunities fo
-            ON fo.user_id = %s
-            AND fo.deleted = FALSE
-            AND fo.created_date BETWEEN %s AND %s
-        LEFT JOIN fact_quotes fq
-            ON fq.user_id = %s
-            AND fq.deleted = FALSE
-            AND fq.created_date BETWEEN %s AND %s
-        LEFT JOIN fact_sales fs
-            ON fs.user_id = %s
-            AND fs.sale_date BETWEEN %s AND %s
+        WITH o AS (
+            SELECT COUNT(*) AS cnt
+            FROM fact_opportunities
+            WHERE user_id = %s AND created_date BETWEEN %s AND %s
+        ),
+        q AS (
+            SELECT COUNT(*) AS cnt
+            FROM fact_quotes
+            WHERE user_id = %s AND created_date BETWEEN %s AND %s
+        ),
+        s AS (
+            SELECT COUNT(*) AS cnt, COALESCE(SUM(final_price), 0) AS rev
+            FROM fact_sales
+            WHERE user_id = %s AND sale_date BETWEEN %s AND %s
+        )
+        SELECT o.cnt AS opportunities, q.cnt AS quotes, s.cnt AS sales, s.rev AS revenue
+        FROM o, q, s
     """, (
         uid, dr["from_date"], dr["to_date"],
         uid, dr["from_date"], dr["to_date"],

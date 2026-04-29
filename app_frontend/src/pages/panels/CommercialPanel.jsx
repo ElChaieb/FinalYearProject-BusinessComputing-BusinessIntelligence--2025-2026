@@ -95,7 +95,7 @@ export default function CommercialPanel({
           ? [...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 animate-pulse h-20"
+                style={{ borderRadius: 4, border: "1px solid #edebe9", background: "#f3f2f1", padding: 16, height: 80 }} className="animate-pulse"
               />
             ))
           : kpiCards.map((kpi) =>
@@ -121,12 +121,12 @@ export default function CommercialPanel({
       <div className="grid gap-6 lg:grid-cols-3 mb-6">
         {/* Revenue area chart */}
         <div className="lg:col-span-2">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-            <h4 className="text-xs text-slate-500 mb-1 uppercase font-bold tracking-tight">
+          <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+            <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
               Monthly Revenue
             </h4>
             {lr ? (
-              <div className="h-48 animate-pulse bg-slate-700/40 rounded-xl mt-2" />
+              <div style={{ height: 192, borderRadius: 4, background: "#f3f2f1", marginTop: 8 }} className="animate-pulse" />
             ) : (
               <RevenueAreaChart data={revenue ?? []} />
             )}
@@ -135,18 +135,18 @@ export default function CommercialPanel({
 
         {/* Top vehicles */}
         <div className="lg:col-span-1">
-          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-            <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+          <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+            <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
               Top Vehicles Sold
             </h4>
             {lv ? (
-              <div className="h-48 animate-pulse bg-slate-700/40 rounded-xl" />
+              <div style={{ height: 192, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
             ) : (
               <MiniBarChart
                 data={vehicles ?? []}
                 nameKey="vehicle"
                 valueKey="sales"
-                color="#8b5cf6"
+                color="#7c3aed"
               />
             )}
           </div>
@@ -154,35 +154,39 @@ export default function CommercialPanel({
       </div>
 
       {/* Recent sales table */}
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-        <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+      <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+        <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
           Recent Sales
         </h4>
         {la ? (
-          <div className="h-40 animate-pulse bg-slate-700/40 rounded-xl" />
+          <div style={{ height: 160, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
         ) : (
-          <table className="w-full text-sm">
+          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
             <thead>
-              <tr className="border-b border-slate-700">
+              <tr style={{ borderBottom: "2px solid #edebe9" }}>
                 {["Date", "Vehicle", "Client", "Amount"].map((h) => (
                   <th
                     key={h}
-                    className={`pb-2 text-slate-500 font-semibold text-xs uppercase tracking-wider ${h === "Amount" ? "text-right" : "text-left"}`}
+                    style={{
+                      paddingBottom: 10, fontSize: 10, fontWeight: 700,
+                      color: "#a19f9d", textTransform: "uppercase", letterSpacing: "0.06em",
+                      textAlign: h === "Amount" ? "right" : "left",
+                    }}
                   >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50">
+            <tbody>
               {(recent ?? []).map((s, i) => (
-                <tr key={i}>
-                  <td className="py-2.5 text-slate-400">{s.date}</td>
-                  <td className="py-2.5 text-slate-200 font-medium">
+                <tr key={i} style={{ borderBottom: "1px solid #f3f2f1" }}>
+                  <td style={{ padding: "10px 0", color: "#a19f9d" }}>{s.date}</td>
+                  <td style={{ padding: "10px 0", fontWeight: 600, color: "#201f1e" }}>
                     {s.vehicle}
                   </td>
-                  <td className="py-2.5 text-slate-400">{s.client}</td>
-                  <td className="py-2.5 text-right font-semibold text-emerald-400">
+                  <td style={{ padding: "10px 0", color: "#605e5c" }}>{s.client}</td>
+                  <td style={{ padding: "10px 0", textAlign: "right", fontWeight: 700, color: "#107c10" }}>
                     {s.amountFmt}
                   </td>
                 </tr>

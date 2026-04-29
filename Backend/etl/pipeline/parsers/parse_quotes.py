@@ -11,6 +11,10 @@ All quotes are inserted with deleted=TRUE. After fake sales are inserted,
 the winning quote_ids are flipped to deleted=FALSE in the same transaction.
 Then mark_won_opportunities() runs after commit to propagate the win upward.
 
+Filtering rule:
+  Only quotes whose Quot_opportunityid is non-NULL AND resolves to a row
+  already present in fact_opportunities are inserted. All others are skipped.
+
 ID strategy:
   - quote_id : direct from Quot_OrderQuoteID
   - oppo_id  : direct from Quot_opportunityid (FK, nullable)
@@ -108,19 +112,41 @@ def parse_and_load_quotes(df_devis: pd.DataFrame) -> dict:
             price = vehicle_cache.get(ar_ref) if ar_ref else None
 
             # ── oppo_id FK ────────────────────────────────────────────────
+            # Business rule: only keep quotes that are linked to an opportunity
+            # present in fact_opportunities. Quotes with a NULL oppo_id or an
+            # oppo_id that was not loaded from this file are skipped entirely.
             oppo_id = _safe_int(row.get("Quot_opportunityid"))
-            if oppo_id is not None:
-                if oppo_id not in oppo_cache:
-                    cur.execute(
-                        "SELECT 1 FROM fact_opportunities WHERE oppo_id = %s", (oppo_id,)
-                    )
-                    oppo_cache[oppo_id] = cur.fetchone() is not None
-                if not oppo_cache[oppo_id]:
-                    logger.warning(
-                        f"  quote {quote_id}: oppo_id {oppo_id} not found "
-                        "in fact_opportunities — inserting with oppo_id=NULL"
-                    )
-                    oppo_id = None
+            if oppo_id is None:
+                logger.debug(
+                    f"  quote {quote_id}: no oppo_id — skipping."
+                )
+                report["skipped"] += 1
+                continue
+
+            if oppo_id not in oppo_cache:
+                cur.execute(
+                    "SELECT 1 FROM fact_opportunities WHERE oppo_id = %s", (oppo_id,)
+                )
+                exists = cur.fetchone() is not None
+                # None  = opportunity not in DB
+                # False = opportunity exists, no quote yet (slot free)
+                # True  = opportunity exists, quote already claimed (slot taken)
+                oppo_cache[oppo_id] = False if exists else None
+
+            if oppo_cache[oppo_id] is None:
+                logger.warning(
+                    f"  quote {quote_id}: oppo_id {oppo_id} not found "
+                    "in fact_opportunities — skipping."
+                )
+                report["skipped"] += 1
+                continue
+
+            if oppo_cache[oppo_id] is True:
+                logger.debug(
+                    f"  quote {quote_id}: oppo_id {oppo_id} already has a quote — skipping."
+                )
+                report["skipped"] += 1
+                continue
 
             # ── user_id ───────────────────────────────────────────────────
             user_id = _resolve_user(row, has_user_id, cur, user_cache, quote_id)
@@ -161,6 +187,7 @@ def parse_and_load_quotes(df_devis: pd.DataFrame) -> dict:
                 ),
             )
             report["inserted"] += 1
+            oppo_cache[oppo_id] = True  # slot taken — skip any further quotes for this oppo
             newly_inserted.append({
                 "quote_id":     quote_id,
                 "oppo_id":      oppo_id,
@@ -174,51 +201,61 @@ def parse_and_load_quotes(df_devis: pd.DataFrame) -> dict:
         # ── Fake sales + flip won quotes to deleted=FALSE ─────────────────
         won_quote_ids: list[int] = []
         if newly_inserted:
-            rate   = random.uniform(FAKE_SALE_RATE_MIN, FAKE_SALE_RATE_MAX)
-            k      = max(1, round(len(newly_inserted) * rate))
-            chosen = random.sample(newly_inserted, min(k, len(newly_inserted)))
-            today  = date.today()
+            rate = random.uniform(FAKE_SALE_RATE_MIN, FAKE_SALE_RATE_MAX)
+            # FIX: removed max(1, …) — small batches must also respect the
+            # 10–23 % ceiling; forcing k≥1 would push tiny batches to 100 %.
+            k = round(len(newly_inserted) * rate)
+            if k > 0:
+                chosen = random.sample(newly_inserted, min(k, len(newly_inserted)))
+                today  = date.today()
 
-            for q in chosen:
-                client_id = None
-                if q["oppo_id"]:
+                for q in chosen:
+                    client_id = None
+                    if q["oppo_id"]:
+                        cur.execute(
+                            "SELECT client_id FROM fact_opportunities WHERE oppo_id = %s",
+                            (q["oppo_id"],),
+                        )
+                        r = cur.fetchone()
+                        client_id = r[0] if r else None
+
+                    sale_date = _random_date_after(q["created_date"], today)
                     cur.execute(
-                        "SELECT client_id FROM fact_opportunities WHERE oppo_id = %s",
-                        (q["oppo_id"],),
+                        """
+                        INSERT INTO fact_sales
+                            (quote_id, oppo_id, user_id, client_id, ar_ref,
+                             agency_name, sale_date, quantity, final_price)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (quote_id) DO NOTHING
+                        """,
+                        (
+                            q["quote_id"], q["oppo_id"], q["user_id"],
+                            client_id, q["ar_ref"], q["agency_name"],
+                            sale_date, 1, q["price"],
+                        ),
                     )
-                    r = cur.fetchone()
-                    client_id = r[0] if r else None
+                    # FIX: count only rows that were actually inserted;
+                    # ON CONFLICT DO NOTHING silently skips duplicates and
+                    # cur.rowcount will be 0 for those — do not count them.
+                    if cur.rowcount:
+                        won_quote_ids.append(q["quote_id"])
+                        report["sales_generated"] += 1
 
-                sale_date = _random_date_after(q["created_date"], today)
-                cur.execute(
-                    """
-                    INSERT INTO fact_sales
-                        (quote_id, oppo_id, user_id, client_id, ar_ref,
-                         agency_name, sale_date, quantity, final_price)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (quote_id) DO NOTHING
-                    """,
-                    (
-                        q["quote_id"], q["oppo_id"], q["user_id"],
-                        client_id, q["ar_ref"], q["agency_name"],
-                        sale_date, 1, q["price"],
-                    ),
+                # ── quote won → deleted=FALSE (same transaction) ──────────
+                if won_quote_ids:
+                    cur.execute(
+                        "UPDATE fact_quotes SET deleted = FALSE WHERE quote_id = ANY(%s)",
+                        (won_quote_ids,),
+                    )
+                    logger.info(
+                        f"Quotes marked won (deleted=FALSE): {len(won_quote_ids)}"
+                    )
+
+                logger.info(
+                    f"Fake sales generated: {report['sales_generated']} "
+                    f"({report['sales_generated'] / len(newly_inserted) * 100:.1f}% "
+                    f"of new quotes)"
                 )
-                won_quote_ids.append(q["quote_id"])
-
-            # ── quote won → deleted=FALSE (same transaction) ──────────────
-            if won_quote_ids:
-                cur.execute(
-                    "UPDATE fact_quotes SET deleted = FALSE WHERE quote_id = ANY(%s)",
-                    (won_quote_ids,),
-                )
-                logger.info(f"Quotes marked won (deleted=FALSE): {len(won_quote_ids)}")
-
-            report["sales_generated"] = len(chosen)
-            logger.info(
-                f"Fake sales generated: {len(chosen)} "
-                f"({len(chosen) / len(newly_inserted) * 100:.1f}% of new quotes)"
-            )
 
         conn.commit()
         logger.info(

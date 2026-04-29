@@ -61,13 +61,13 @@ export default function Section3({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <h2 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}>
           <span className="w-4 h-px bg-blue-600 inline-block" />
           Trends
         </h2>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs font-semibold text-blue-500 hover:text-blue-400 uppercase tracking-tighter"
+          style={{ fontSize: 12, fontWeight: 600, color: "#0078d4", background: "none", border: "none", cursor: "pointer" }}
         >
           {isExpanded ? "[ Collapse ]" : "[ Expand ]"}
         </button>
@@ -78,7 +78,7 @@ export default function Section3({
           ? [...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 animate-pulse h-24"
+                style={{ borderRadius: 4, border: "1px solid #edebe9", background: "#f3f2f1", padding: 16, height: 96 }} className="animate-pulse"
               />
             ))
           : section3_data.map((item) => (
@@ -93,12 +93,12 @@ export default function Section3({
 
             {/* Level-1 */}
             <div className="lg:col-span-2">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
                   Sales by Vehicle Category
                 </h4>
                 {lc ? (
-                  <div className="h-48 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 192, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <CategoryDonutChart
                     data={cats ?? []}
@@ -110,12 +110,12 @@ export default function Section3({
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
                   Top Brands
                 </h4>
                 {lb ? (
-                  <div className="h-48 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 192, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <MiniBarChart
                     data={brands ?? []}
@@ -129,15 +129,15 @@ export default function Section3({
 
             {/* Level-2 */}
             <div className="lg:col-span-3">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-1 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
                   Agency Comparison — Units Sold
                   <span className="ml-2 text-blue-500 normal-case font-normal">
                     — click to drill down
                   </span>
                 </h4>
                 {lav ? (
-                  <div className="h-40 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 160, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <>
                     <AgencyComparisonBar
@@ -147,26 +147,21 @@ export default function Section3({
                       onBarClick={handleAgencyClick}
                       selectedAgency={selectedAgency}
                     />
-                    <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #edebe9", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px,1fr))", gap: 8 }}>
                       {(agVeh ?? []).map((a) => (
                         <button
                           key={a.agency}
                           onClick={() => handleAgencyClick(a.agency)}
-                          className={`text-left rounded-xl p-3 border transition-all ${
-                            selectedAgency === a.agency
-                              ? "border-emerald-600/50 bg-slate-900"
-                              : "border-slate-700 bg-slate-900/40 hover:border-slate-600"
-                          }`}
+                          style={{
+                            textAlign: "left", borderRadius: 4, padding: "10px 12px",
+                            border: `1px solid ${selectedAgency === a.agency ? "#107c10" : "#edebe9"}`,
+                            background: selectedAgency === a.agency ? "#dff6dd" : "#faf9f8",
+                            cursor: "pointer", transition: "all 0.1s",
+                          }}
                         >
-                          <p className="text-xs font-semibold text-white">
-                            {a.agency}
-                          </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            {a.topCategory}
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            {a.topBrand}
-                          </p>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "#201f1e", margin: "0 0 4px" }}>{a.agency}</p>
+                          <p style={{ fontSize: 11, color: "#605e5c", margin: "0 0 2px" }}>{a.topCategory}</p>
+                          <p style={{ fontSize: 11, color: "#605e5c", margin: 0 }}>{a.topBrand}</p>
                         </button>
                       ))}
                     </div>
@@ -178,7 +173,7 @@ export default function Section3({
             {/* Level-3 */}
             {selectedAgency && (
               <div className="lg:col-span-3">
-                <div className="bg-slate-800 border border-blue-600/40 rounded-2xl p-6 shadow-xl">
+                <div style={{ background: "#fff", border: "1px solid #0078d4", borderRadius: 4, padding: 24, boxShadow: "0 2px 8px rgba(0,120,212,.12)" }}>
                   <AgencyPanel
                     agencyName={selectedAgency}
                     filter={filter}

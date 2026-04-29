@@ -27,7 +27,7 @@ export default function CommercialDashboard() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="ml-64 flex-1 min-h-screen bg-[#0f1117] p-8 text-white">
+      <div style={{ marginLeft: 256, flex: 1, minHeight: "100vh", background: "#f3f2f1", padding: 32, color: "#201f1e" }}>
         <header className="fixed top-0 left-64 right-0 h-16 bg-white/95 border-b border-gray-200 flex items-center px-6 z-10">
           <div>
             <h1 className="text-xl font-semibold text-gray-800">

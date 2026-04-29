@@ -108,20 +108,20 @@ const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 // ── Colours (dark-shell safe — inline only, no Tailwind dark:) ─────────────────
 
 const C = {
-  bg:           "#0d1117",
-  bgPopover:    "#111827",
-  bgHover:      "#1e2530",
-  bgRangeStrip: "#172032",
-  bgPresetActive:"#1e3a5f",
-  border:       "#1e2530",
-  borderStrong: "#2d3748",
-  accent:       "#3b82f6",
-  accentHover:  "#2563eb",
-  textPrimary:  "#f1f5f9",
-  textSecondary:"#64748b",
-  textMuted:    "#334155",
-  textAccent:   "#60a5fa",
-  today:        "#f59e0b",
+  bg:           "#ffffff",
+  bgPopover:    "#ffffff",
+  bgHover:      "#f3f2f1",
+  bgRangeStrip: "#deecf9",
+  bgPresetActive:"#deecf9",
+  border:       "#edebe9",
+  borderStrong: "#d2d0ce",
+  accent:       "#0078d4",
+  accentHover:  "#106ebe",
+  textPrimary:  "#201f1e",
+  textSecondary:"#605e5c",
+  textMuted:    "#a19f9d",
+  textAccent:   "#0078d4",
+  today:        "#c19c00",
 };
 
 // ── Calendar (single month) ────────────────────────────────────────────────────
@@ -479,7 +479,7 @@ export function DateRangePicker({
         style={{
           display: "flex", alignItems: "center", gap: 8,
           width: "100%", padding: "7px 12px",
-          background: open ? "#111827" : C.bg,
+          background: open ? "#f3f2f1" : C.bg,
           border: `1px solid ${open ? C.accent + "60" : C.border}`,
           borderRadius: 8, cursor: "pointer",
           fontSize: 12, color: value?.from ? C.textPrimary : C.textSecondary,
@@ -611,7 +611,7 @@ export function DateRangePicker({
                   onChange={e => handleFromInput(e.target.value)}
                   style={{
                     width: 96, padding: "5px 8px",
-                    background: "#0d1117",
+                    background: "#fff",
                     border: `1px solid ${fromErr ? "#ef4444" : fromInput && !fromErr ? C.accent + "80" : C.borderStrong}`,
                     borderRadius: 6, fontSize: 12,
                     color: fromErr ? "#ef4444" : C.textPrimary,
@@ -641,7 +641,7 @@ export function DateRangePicker({
                   onChange={e => handleToInput(e.target.value)}
                   style={{
                     width: 96, padding: "5px 8px",
-                    background: "#0d1117",
+                    background: "#fff",
                     border: `1px solid ${toErr ? "#ef4444" : toInput && !toErr ? C.accent + "80" : C.borderStrong}`,
                     borderRadius: 6, fontSize: 12,
                     color: toErr ? "#ef4444" : C.textPrimary,

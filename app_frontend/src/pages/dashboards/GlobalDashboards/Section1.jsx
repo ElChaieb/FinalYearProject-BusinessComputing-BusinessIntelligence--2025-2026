@@ -95,13 +95,13 @@ export default function Section1({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <h2 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}>
           <span className="w-4 h-px bg-blue-600 inline-block" />
           Revenue
         </h2>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs font-semibold text-blue-500 hover:text-blue-400 uppercase tracking-tighter"
+          style={{ fontSize: 12, fontWeight: 600, color: "#0078d4", background: "none", border: "none", cursor: "pointer" }}
         >
           {isExpanded ? "[ Collapse ]" : "[ Expand ]"}
         </button>
@@ -112,7 +112,7 @@ export default function Section1({
           ? [...Array(5)].map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 animate-pulse h-24"
+                style={{ borderRadius: 4, border: "1px solid #edebe9", background: "#f3f2f1", padding: 16, height: 96 }} className="animate-pulse"
               />
             ))
           : section1_data.map((item) =>
@@ -142,13 +142,13 @@ export default function Section1({
 
             {/* Level-1 — Revenue line chart */}
             <div className="lg:col-span-5">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-2 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
                   {activeTab === "monthly" ? "Monthly" : "Yearly"} Revenue — All
                   Agencies
                 </h4>
                 {lr || la ? (
-                  <div className="h-64 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 240, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <>
                     <RevenueLineChart data={revenue ?? []} series={series} />
@@ -160,8 +160,8 @@ export default function Section1({
 
             {/* Level-2 — Agency comparison */}
             <div className="lg:col-span-5">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-1 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
                   Agency Comparison
                   <span className="ml-2 text-blue-500 normal-case font-normal">
                     — click to drill down
@@ -171,7 +171,7 @@ export default function Section1({
                   Total revenue per agency
                 </p>
                 {la ? (
-                  <div className="h-40 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 160, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <AgencyComparisonBar
                     data={agencies ?? []}
@@ -188,7 +188,7 @@ export default function Section1({
             {/* Level-3 — Agency detail panel */}
             {selectedAgency && (
               <div className="lg:col-span-5">
-                <div className="bg-slate-800 border border-blue-600/40 rounded-2xl p-6 shadow-xl">
+                <div style={{ background: "#fff", border: "1px solid #0078d4", borderRadius: 4, padding: 24, boxShadow: "0 2px 8px rgba(0,120,212,.12)" }}>
                   <AgencyPanel
                     agencyName={selectedAgency}
                     filter={filter}
@@ -206,26 +206,30 @@ export default function Section1({
 
 export function TabBar({ activeTab, setActiveTab }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex bg-slate-900/80 p-1 rounded-lg border border-slate-700">
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", background: "#f3f2f1", padding: 3, borderRadius: 4, border: "1px solid #edebe9" }}>
         {["monthly", "yearly"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${
-              activeTab === tab
-                ? "bg-slate-700 text-white"
-                : "text-slate-500 hover:text-slate-300"
-            }`}
+            style={{
+              padding: "4px 14px", fontSize: 11, fontWeight: 700,
+              borderRadius: 3, border: "none", cursor: "pointer",
+              textTransform: "uppercase", letterSpacing: "0.04em",
+              background: activeTab === tab ? "#fff" : "transparent",
+              color: activeTab === tab ? "#0078d4" : "#a19f9d",
+              boxShadow: activeTab === tab ? "0 1px 3px rgba(0,0,0,.1)" : "none",
+              transition: "all 0.1s",
+            }}
           >
             {tab}
           </button>
         ))}
       </div>
-      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+      <span style={{ fontSize: 10, fontWeight: 700, color: "#a19f9d", textTransform: "uppercase", letterSpacing: "0.06em" }}>
         Showing {activeTab} analytics
       </span>
-      <div className="h-px bg-slate-800 flex-1" />
+      <div style={{ height: 1, flex: 1, background: "#edebe9" }} />
     </div>
   );
 }

@@ -59,7 +59,7 @@ function GlobalOverview() {
       key: "revenue",
       label: "Revenue",
       path: "/dashboard/revenue",
-      color: "#3b82f6",
+      color: "#0078d4",
       icon: "💰",
       loading: l1,
       kpis: s1 ? [
@@ -72,7 +72,7 @@ function GlobalOverview() {
       key: "funnel",
       label: "Conversion Funnel",
       path: "/dashboard/funnel",
-      color: "#8b5cf6",
+      color: "#7c3aed",
       icon: "🔄",
       loading: l2,
       kpis: s2 ? [
@@ -99,7 +99,7 @@ function GlobalOverview() {
       key: "clients",
       label: "Clients",
       path: "/dashboard/clients",
-      color: "#10b981",
+      color: "#107c10",
       icon: "👥",
       loading: l4,
       kpis: s4 ? [
@@ -127,7 +127,7 @@ function GlobalOverview() {
 
       {/* Quick nav hint */}
       <div style={{ marginTop: 32, textAlign: "center" }}>
-        <p style={{ fontSize: 12, color: "#334155" }}>
+        <p style={{ fontSize: 12, color: "#a19f9d" }}>
           Click any section to drill down — or use the sidebar to navigate directly
         </p>
       </div>
@@ -147,7 +147,7 @@ function AgencyOverview() {
   const sections = [
     {
       key: "revenue", label: "Revenue", path: "/dashboard/revenue",
-      color: "#3b82f6", icon: "💰", loading,
+      color: "#0078d4", icon: "💰", loading,
       kpis: kpis ? [
         { label: "Revenue",    value: fmt(kpis.revenue) },
         { label: "Sales",      value: kpis.sales },
@@ -155,7 +155,7 @@ function AgencyOverview() {
     },
     {
       key: "funnel", label: "Conversion Funnel", path: "/dashboard/funnel",
-      color: "#8b5cf6", icon: "🔄", loading,
+      color: "#7c3aed", icon: "🔄", loading,
       kpis: kpis ? [
         { label: "Opportunities", value: kpis.opportunities },
         { label: "Quotes",        value: kpis.quotes },
@@ -169,7 +169,7 @@ function AgencyOverview() {
     },
     {
       key: "clients", label: "Clients", path: "/dashboard/clients",
-      color: "#10b981", icon: "👥", loading: false, kpis: [],
+      color: "#107c10", icon: "👥", loading: false, kpis: [],
     },
   ];
 
@@ -199,7 +199,7 @@ function CommercialOverview() {
   const sections = [
     {
       key: "revenue", label: "My Revenue", path: "/dashboard/revenue",
-      color: "#3b82f6", icon: "💰", loading,
+      color: "#0078d4", icon: "💰", loading,
       kpis: kpis ? [
         { label: "Revenue", value: fmt(kpis.revenue) },
         { label: "Sales",   value: kpis.sales },
@@ -207,7 +207,7 @@ function CommercialOverview() {
     },
     {
       key: "funnel", label: "My Pipeline", path: "/dashboard/funnel",
-      color: "#8b5cf6", icon: "🔄", loading,
+      color: "#7c3aed", icon: "🔄", loading,
       kpis: kpis ? [
         { label: "Opportunities", value: kpis.opportunities },
         { label: "Quotes",        value: kpis.quotes },
@@ -220,7 +220,7 @@ function CommercialOverview() {
     },
     {
       key: "clients", label: "My Clients", path: "/dashboard/clients",
-      color: "#10b981", icon: "👥", loading: false, kpis: [],
+      color: "#107c10", icon: "👥", loading: false, kpis: [],
     },
   ];
 
@@ -247,38 +247,36 @@ function SectionPulseCard({ section, onClick }) {
     <div
       onClick={onClick}
       style={{
-        background: "#0d1117",
-        border: `1px solid #1e2530`,
-        borderRadius: 14,
-        padding: "20px 22px",
+        background: "#fff",
+        border: `1px solid #edebe9`,
+        borderTop: `3px solid ${color}`,
+        borderRadius: 4,
+        padding: "18px 20px",
         cursor: "pointer",
-        transition: "all 0.18s",
+        transition: "all 0.15s",
         position: "relative",
-        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,.07)",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = color + "60";
-        e.currentTarget.style.background = "#111827";
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.boxShadow = `0 2px 8px rgba(0,0,0,.12)`;
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.borderColor = "#1e2530";
-        e.currentTarget.style.background = "#0d1117";
+        e.currentTarget.style.borderTopColor = color;
+        e.currentTarget.style.borderRightColor = "#edebe9";
+        e.currentTarget.style.borderBottomColor = "#edebe9";
+        e.currentTarget.style.borderLeftColor = "#edebe9";
+        e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,.07)";
       }}
     >
-      {/* Accent line */}
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 2,
-        background: color, opacity: 0.7, borderRadius: "14px 14px 0 0",
-      }} />
-
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 15 }}>{icon}</span>
-          <span style={{ fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{label}</span>
+          <span style={{ fontSize: 14 }}>{icon}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
         </div>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.3 }}>
-          <path d="M3 7h8M8 4l3 3-3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.4 }}>
+          <path d="M3 7h8M8 4l3 3-3 3" stroke="#605e5c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </div>
 
@@ -286,19 +284,19 @@ function SectionPulseCard({ section, onClick }) {
       {loading ? (
         <div style={{ display: "flex", gap: 12 }}>
           {[1, 2, 3].map(i => (
-            <div key={i} style={{ flex: 1, height: 52, background: "#161f2e", borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div key={i} style={{ flex: 1, height: 48, background: "#f3f2f1", borderRadius: 4, animation: "pulse 1.8s ease-in-out infinite" }} />
           ))}
         </div>
       ) : (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {kpis.length === 0 ? (
-            <span style={{ fontSize: 12, color: "#334155" }}>Click to view details</span>
+            <span style={{ fontSize: 12, color: "#a19f9d" }}>Click to view details</span>
           ) : kpis.map((kpi) => (
             <div key={kpi.label} style={{ flex: "1 1 80px", minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: "#475569", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#a19f9d", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 {kpi.label}
               </div>
-              <div style={{ fontSize: 17, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#201f1e", letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {kpi.value}
               </div>
             </div>

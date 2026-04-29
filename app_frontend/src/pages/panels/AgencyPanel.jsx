@@ -89,7 +89,7 @@ export default function AgencyPanel({ agencyName, filter, onClose }) {
           ? [...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 animate-pulse h-20"
+                style={{ borderRadius: 4, border: "1px solid #edebe9", background: "#f3f2f1", padding: 16, height: 80 }} className="animate-pulse"
               />
             ))
           : agencyKpis.map((kpi) =>
@@ -115,28 +115,28 @@ export default function AgencyPanel({ agencyName, filter, onClose }) {
       {/* Revenue area + funnel */}
       <div className="grid gap-6 lg:grid-cols-3 mb-6">
         <div className="lg:col-span-2">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl">
-            <h4 className="text-xs text-slate-500 mb-1 uppercase font-bold tracking-tight">
+          <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+            <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
               Monthly Revenue
             </h4>
             {lr ? (
-              <div className="h-48 animate-pulse bg-slate-700/40 rounded-xl mt-2" />
+              <div style={{ height: 192, borderRadius: 4, background: "#f3f2f1", marginTop: 8 }} className="animate-pulse" />
             ) : (
               <RevenueAreaChart data={revenue ?? []} />
             )}
           </div>
         </div>
         <div className="lg:col-span-1">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl">
-            <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+          <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+            <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
               Funnel
             </h4>
             {lk ? (
-              <div className="h-32 animate-pulse bg-slate-700/40 rounded-xl" />
+              <div style={{ height: 128, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
             ) : (
               <>
                 <FunnelLegend data={funnelRows} />
-                <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #edebe9", display: "flex", flexDirection: "column", gap: 8 }}>
                   <ConvRow label="Opp → Quote" value={kpis?.convOQ ?? "—"} />
                   <ConvRow label="Quote → Sale" value={kpis?.convQS ?? "—"} />
                 </div>
@@ -147,15 +147,15 @@ export default function AgencyPanel({ agencyName, filter, onClose }) {
       </div>
 
       {/* Commercial performance table */}
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl">
-        <h4 className="text-xs text-slate-500 mb-1 uppercase font-bold tracking-tight">
+      <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+        <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
           Commercial Performance
           <span className="ml-2 text-blue-500 normal-case font-normal">
             — click to drill down
           </span>
         </h4>
         {lc ? (
-          <div className="h-40 animate-pulse bg-slate-700/40 rounded-xl mt-4" />
+          <div style={{ height: 160, borderRadius: 4, background: "#f3f2f1", marginTop: 16 }} className="animate-pulse" />
         ) : (
           <div className="mt-4 space-y-2">
             {(commercials ?? []).map((c) => (
@@ -177,7 +177,7 @@ export default function AgencyPanel({ agencyName, filter, onClose }) {
 
       {/* Commercial drill-down panel */}
       {selectedCommercial && (
-        <div className="mt-6 bg-slate-900 border border-blue-600/40 rounded-2xl p-6 shadow-xl">
+        <div style={{ marginTop: 24, background: "#fff", border: "1px solid #0078d4", borderRadius: 4, padding: 24, boxShadow: "0 2px 8px rgba(0,120,212,.12)" }}>
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
               <span className="w-4 h-px bg-blue-600 inline-block" />
@@ -205,9 +205,9 @@ export default function AgencyPanel({ agencyName, filter, onClose }) {
 
 function ConvRow({ label, value }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-semibold text-white">{value}</span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
+      <span style={{ color: "#605e5c" }}>{label}</span>
+      <span style={{ fontWeight: 600, color: "#201f1e" }}>{value}</span>
     </div>
   );
 }
@@ -217,46 +217,45 @@ function CommercialRow({ commercial, maxSales, isSelected, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-xl px-4 py-3 border transition-all ${
-        isSelected
-          ? "border-blue-600/50 bg-slate-800"
-          : "border-transparent hover:bg-slate-800/50"
-      }`}
+      style={{
+        width: "100%", textAlign: "left", borderRadius: 4, padding: "10px 14px",
+        border: isSelected ? "1px solid #0078d4" : "1px solid #edebe9",
+        background: isSelected ? "#deecf9" : "#faf9f8",
+        cursor: "pointer", transition: "all 0.12s",
+      }}
     >
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#201f1e" }}>
             {commercial.name}
           </span>
-          <span
-            className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-              commercial.changeType === "positive"
-                ? "bg-emerald-400/10 text-emerald-400 ring-emerald-400/20"
-                : "bg-red-400/10 text-red-400 ring-red-400/20"
-            }`}
-          >
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: "2px 6px", borderRadius: 2,
+            background: commercial.changeType === "positive" ? "#dff6dd" : "#fde7e9",
+            color: commercial.changeType === "positive" ? "#107c10" : "#d13438",
+          }}>
             {commercial.change}
           </span>
         </div>
-        <div className="flex gap-4 text-xs text-slate-400 tabular-nums">
+        <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#a19f9d" }}>
           <span>{commercial.convRate} conv.</span>
-          <span className="font-semibold text-white">
+          <span style={{ fontWeight: 600, color: "#201f1e" }}>
             {commercial.revenueFmt}
           </span>
           <span>{commercial.sales} sales</span>
         </div>
       </div>
-      <div className="h-1 rounded-full bg-slate-700 overflow-hidden">
+      <div style={{ height: 6, borderRadius: 3, background: "#edebe9", overflow: "hidden" }}>
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
             width: `${pct}%`,
-            background: isSelected ? "#60a5fa" : "#3b82f6",
+            background: isSelected ? "#0078d4" : "#5ba4d5",
           }}
         />
       </div>
       {isSelected && (
-        <p className="mt-1 text-[10px] text-blue-400 font-semibold uppercase tracking-wider">
+        <p style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: "#0078d4", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Detail below ↓
         </p>
       )}

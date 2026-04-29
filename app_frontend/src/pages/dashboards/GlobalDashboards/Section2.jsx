@@ -81,13 +81,13 @@ export default function Section2({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <h2 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}>
           <span className="w-4 h-px bg-blue-600 inline-block" />
           Conversion Rates
         </h2>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs font-semibold text-blue-500 hover:text-blue-400 uppercase tracking-tighter"
+          style={{ fontSize: 12, fontWeight: 600, color: "#0078d4", background: "none", border: "none", cursor: "pointer" }}
         >
           {isExpanded ? "[ Collapse ]" : "[ Expand ]"}
         </button>
@@ -98,7 +98,7 @@ export default function Section2({
           ? [...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 animate-pulse h-24"
+                style={{ borderRadius: 4, border: "1px solid #edebe9", background: "#f3f2f1", padding: 16, height: 96 }} className="animate-pulse"
               />
             ))
           : section2_data.map((item) => <StatCard key={item.name} {...item} />)}
@@ -111,12 +111,12 @@ export default function Section2({
 
             {/* Level-1 */}
             <div className="lg:col-span-2">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
                   {activeTab === "monthly" ? "Monthly" : "Yearly"} Funnel Volume
                 </h4>
                 {lf ? (
-                  <div className="h-48 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 192, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <FunnelBarChart data={funnelData ?? []} />
                 )}
@@ -124,26 +124,18 @@ export default function Section2({
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <h4 className="text-xs text-slate-500 mb-4 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>
                   Funnel Totals
                 </h4>
                 {lf ? (
-                  <div className="h-32 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 128, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <>
                     <FunnelLegend data={funnelData ?? []} />
-                    <div className="mt-6 pt-4 border-t border-slate-700 space-y-2">
-                      <ConvRate
-                        label="Opp → Quote"
-                        value={convOQ}
-                        color="text-blue-400"
-                      />
-                      <ConvRate
-                        label="Quote → Sale"
-                        value={convQS}
-                        color="text-violet-400"
-                      />
+                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #edebe9", display: "flex", flexDirection: "column", gap: 8 }}>
+                      <ConvRate label="Opp → Quote" value={convOQ} color="#0078d4" />
+                      <ConvRate label="Quote → Sale" value={convQS} color="#7c3aed" />
                     </div>
                   </>
                 )}
@@ -152,24 +144,27 @@ export default function Section2({
 
             {/* Level-2 */}
             <div className="lg:col-span-3">
-              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xs text-slate-500 uppercase font-bold tracking-tight">
+              <div style={{ background: "#fff", border: "1px solid #edebe9", borderRadius: 4, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,.07)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <h4 style={{ fontSize: 11, fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
                     Agency Comparison
-                    <span className="ml-2 text-blue-500 normal-case font-normal">
+                    <span style={{ marginLeft: 8, color: "#0078d4", fontWeight: 400, textTransform: "none", fontSize: 12 }}>
                       — click to drill down
                     </span>
                   </h4>
-                  <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-lg border border-slate-700">
+                  <div style={{ display: "flex", background: "#f3f2f1", padding: 3, borderRadius: 4, border: "1px solid #edebe9", gap: 2 }}>
                     {METRIC_OPTIONS.map((m) => (
                       <button
                         key={m.key}
                         onClick={() => setFunnelMetric(m.key)}
-                        className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${
-                          funnelMetric === m.key
-                            ? "bg-slate-700 text-white"
-                            : "text-slate-500 hover:text-slate-300"
-                        }`}
+                        style={{
+                          padding: "4px 12px", fontSize: 11, fontWeight: 700,
+                          borderRadius: 3, border: "none", cursor: "pointer",
+                          textTransform: "uppercase",
+                          background: funnelMetric === m.key ? "#fff" : "transparent",
+                          color: funnelMetric === m.key ? "#0078d4" : "#a19f9d",
+                          boxShadow: funnelMetric === m.key ? "0 1px 3px rgba(0,0,0,.1)" : "none",
+                        }}
                       >
                         {m.label}
                       </button>
@@ -177,7 +172,7 @@ export default function Section2({
                   </div>
                 </div>
                 {laf ? (
-                  <div className="h-40 animate-pulse bg-slate-700/40 rounded-xl" />
+                  <div style={{ height: 160, borderRadius: 4, background: "#f3f2f1" }} className="animate-pulse" />
                 ) : (
                   <AgencyComparisonBar
                     data={agencyFunnel ?? []}
@@ -188,28 +183,25 @@ export default function Section2({
                   />
                 )}
 
-                {/* Per-agency conv rate badges */}
                 {!laf && (agencyFunnel ?? []).length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #edebe9", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px,1fr))", gap: 8 }}>
                     {(agencyFunnel ?? []).map((a) => (
                       <button
                         key={a.agency}
                         onClick={() => handleAgencyClick(a.agency)}
-                        className={`text-left rounded-xl p-3 border transition-all ${
-                          selectedAgency === a.agency
-                            ? "border-blue-600/50 bg-slate-900"
-                            : "border-slate-700 bg-slate-900/40 hover:border-slate-600"
-                        }`}
+                        style={{
+                          textAlign: "left", borderRadius: 4, padding: "10px 12px",
+                          border: `1px solid ${selectedAgency === a.agency ? "#0078d4" : "#edebe9"}`,
+                          background: selectedAgency === a.agency ? "#deecf9" : "#faf9f8",
+                          cursor: "pointer", transition: "all 0.1s",
+                        }}
                       >
-                        <p className="text-xs font-semibold text-white">
-                          {a.agency}
+                        <p style={{ fontSize: 12, fontWeight: 600, color: "#201f1e", margin: "0 0 4px" }}>{a.agency}</p>
+                        <p style={{ fontSize: 11, color: "#605e5c", margin: "0 0 2px" }}>
+                          O→Q: <span style={{ fontWeight: 600, color: "#0078d4" }}>{a.convOQ}</span>
                         </p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          O→Q: <span className="text-blue-400">{a.convOQ}</span>
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          Q→S:{" "}
-                          <span className="text-violet-400">{a.convQS}</span>
+                        <p style={{ fontSize: 11, color: "#605e5c", margin: 0 }}>
+                          Q→S: <span style={{ fontWeight: 600, color: "#7c3aed" }}>{a.convQS}</span>
                         </p>
                       </button>
                     ))}
@@ -221,7 +213,7 @@ export default function Section2({
             {/* Level-3 */}
             {selectedAgency && (
               <div className="lg:col-span-3">
-                <div className="bg-slate-800 border border-blue-600/40 rounded-2xl p-6 shadow-xl">
+                <div style={{ background: "#fff", border: "1px solid #0078d4", borderRadius: 4, padding: 24, boxShadow: "0 2px 8px rgba(0,120,212,.12)" }}>
                   <AgencyPanel
                     agencyName={selectedAgency}
                     filter={filter}
@@ -239,9 +231,9 @@ export default function Section2({
 
 function ConvRate({ label, value, color }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className={`font-semibold ${color}`}>{value}</span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
+      <span style={{ color: "#605e5c" }}>{label}</span>
+      <span style={{ fontWeight: 700, color }}>{value}</span>
     </div>
   );
 }

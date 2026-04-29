@@ -1,27 +1,10 @@
-// components/Sidebar.jsx
-// Upgraded sidebar with dashboard section sub-navigation
-// Preserves existing role-based filtering + adds Revenue/Funnel/Vehicles/Clients links
-
+// components/Sidebar.jsx — Power BI light theme
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const ALL_ROLES = [
-  "Administrateur BI",
-  "Directeur Général",
-  "Directeur Commercial",
-  "Responsable d'Agence",
-  "Commercial",
-];
+const ALL_ROLES = ["Administrateur BI","Directeur Général","Directeur Commercial","Responsable d'Agence","Commercial"];
+const DASHBOARD_ROLES = [...ALL_ROLES];
 
-const DASHBOARD_ROLES = [
-  "Administrateur BI",
-  "Directeur Général",
-  "Directeur Commercial",
-  "Responsable d'Agence",
-  "Commercial",
-];
-
-// Dashboard sub-sections — visible to all dashboard users
 const DASHBOARD_SECTIONS = [
   { label: "Overview",  path: "/dashboard",          icon: GridIcon  },
   { label: "Revenue",   path: "/dashboard/revenue",  icon: RevenueIcon },
@@ -31,69 +14,59 @@ const DASHBOARD_SECTIONS = [
 ];
 
 const TOP_NAV = [
-  { label: "Admin Panel",      path: "/admin",   roles: ["Administrateur BI"] },
-  { label: "Data Management",  path: "/data",    roles: ["Administrateur BI"] },
-  { label: "My Profile",       path: "/profile", roles: ALL_ROLES },
+  { label: "Admin Panel",     path: "/admin",   roles: ["Administrateur BI"] },
+  { label: "Data Management", path: "/data",    roles: ["Administrateur BI"] },
+  { label: "My Profile",      path: "/profile", roles: ALL_ROLES },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const location = useLocation();
-
-  const isDashboardSection = location.pathname.startsWith("/dashboard");
   const filteredTop = TOP_NAV.filter((item) => item.roles.includes(user?.role));
 
-  // Role initials for avatar
   const initials = (user?.name ?? "?")
-    .split(" ")
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+    .split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
   return (
-    <aside
-      style={{
-        width: 220,
-        minHeight: "100vh",
-        background: "#0d1117",
-        borderRight: "1px solid #1e2530",
-        display: "flex",
-        flexDirection: "column",
-        position: "fixed",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        zIndex: 40,
-        fontFamily: "'DM Sans', system-ui, sans-serif",
-      }}
-    >
+    <aside style={{
+      width: 220, minHeight: "100vh",
+      background: "#fff",
+      borderRight: "1px solid #edebe9",
+      display: "flex", flexDirection: "column",
+      position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 40,
+      fontFamily: "'Segoe UI', system-ui, sans-serif",
+    }}>
       {/* Logo */}
-      <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid #1e2530" }}>
+      <div style={{ padding: "18px 16px 16px", borderBottom: "1px solid #edebe9" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+            width: 32, height: 32, borderRadius: 4,
+            background: "#0078d4",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0,
-          }}>B</div>
+            flexShrink: 0,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="7" height="7" rx="1" fill="#fff" opacity="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" fill="#fff" opacity=".7"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" fill="#fff" opacity=".7"/>
+              <rect x="14" y="14" width="7" height="7" rx="1" fill="#fff" opacity=".4"/>
+            </svg>
+          </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9", letterSpacing: "-0.01em" }}>BI App</div>
-            <div style={{ fontSize: 11, color: "#475569", marginTop: 1 }}>{user?.role}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#201f1e", letterSpacing: "-0.01em" }}>BI App</div>
+            <div style={{ fontSize: 11, color: "#a19f9d", marginTop: 1 }}>{user?.role}</div>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: "12px 12px", overflowY: "auto" }}>
-
-        {/* Dashboard section */}
+      <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
         {DASHBOARD_ROLES.includes(user?.role) && (
           <div style={{ marginBottom: 8 }}>
             <div style={{
-              fontSize: 10, fontWeight: 600, color: "#334155",
+              fontSize: 10, fontWeight: 700, color: "#a19f9d",
               letterSpacing: "0.08em", textTransform: "uppercase",
-              padding: "4px 8px 8px",
+              padding: "4px 10px 8px",
             }}>
               Dashboard
             </div>
@@ -103,33 +76,31 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* Divider */}
         {filteredTop.length > 0 && (
-          <div style={{ height: 1, background: "#1e2530", margin: "8px 0 12px" }} />
+          <div style={{ height: 1, background: "#edebe9", margin: "8px 0 12px" }} />
         )}
 
-        {/* Other nav */}
         {filteredTop.map(({ label, path }) => (
           <SidebarLink key={path} to={path} label={label} />
         ))}
       </nav>
 
       {/* User footer */}
-      <div style={{ padding: "12px 12px 16px", borderTop: "1px solid #1e2530" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      <div style={{ padding: "12px 8px 16px", borderTop: "1px solid #edebe9" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "0 4px" }}>
           <div style={{
             width: 32, height: 32, borderRadius: "50%",
-            background: "#1e3a5f",
+            background: "#deecf9",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 11, fontWeight: 600, color: "#60a5fa", flexShrink: 0,
+            fontSize: 11, fontWeight: 700, color: "#0078d4", flexShrink: 0,
           }}>
             {initials}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#201f1e", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {user?.name}
             </div>
-            <div style={{ fontSize: 11, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div style={{ fontSize: 11, color: "#a19f9d", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {user?.email}
             </div>
           </div>
@@ -139,15 +110,15 @@ export default function Sidebar() {
           style={{
             width: "100%", padding: "7px 12px",
             background: "transparent",
-            border: "1px solid #2d3748",
-            borderRadius: 8, cursor: "pointer",
+            border: "1px solid #edebe9",
+            borderRadius: 4, cursor: "pointer",
             fontSize: 12, fontWeight: 500,
-            color: "#94a3b8",
-            transition: "all 0.15s",
+            color: "#605e5c",
+            transition: "all 0.12s",
             textAlign: "center",
           }}
-          onMouseEnter={e => { e.target.style.borderColor = "#ef4444"; e.target.style.color = "#ef4444"; e.target.style.background = "#1a0a0a"; }}
-          onMouseLeave={e => { e.target.style.borderColor = "#2d3748"; e.target.style.color = "#94a3b8"; e.target.style.background = "transparent"; }}
+          onMouseEnter={e => { e.target.style.borderColor = "#d13438"; e.target.style.color = "#d13438"; e.target.style.background = "#fde7e9"; }}
+          onMouseLeave={e => { e.target.style.borderColor = "#edebe9"; e.target.style.color = "#605e5c"; e.target.style.background = "transparent"; }}
         >
           Sign out
         </button>
@@ -162,32 +133,27 @@ function SidebarLink({ to, label, icon, exact = false }) {
       to={to}
       end={exact}
       style={({ isActive }) => ({
-        display: "flex",
-        alignItems: "center",
-        gap: 9,
+        display: "flex", alignItems: "center", gap: 9,
         padding: "7px 10px",
-        borderRadius: 7,
-        marginBottom: 2,
+        borderRadius: 4, marginBottom: 2,
         fontSize: 13,
-        fontWeight: isActive ? 500 : 400,
-        color: isActive ? "#f1f5f9" : "#64748b",
-        background: isActive ? "#1e2d3d" : "transparent",
+        fontWeight: isActive ? 600 : 400,
+        color: isActive ? "#0078d4" : "#605e5c",
+        background: isActive ? "#deecf9" : "transparent",
         textDecoration: "none",
-        transition: "all 0.12s",
-        borderLeft: isActive ? "2px solid #3b82f6" : "2px solid transparent",
+        transition: "all 0.1s",
+        borderLeft: isActive ? "3px solid #0078d4" : "3px solid transparent",
       })}
       onMouseEnter={e => {
-        if (!e.currentTarget.classList.contains("active")) {
-          e.currentTarget.style.color = "#cbd5e1";
-          e.currentTarget.style.background = "#141c26";
+        if (e.currentTarget.getAttribute("aria-current") !== "page") {
+          e.currentTarget.style.background = "#f3f2f1";
+          e.currentTarget.style.color = "#201f1e";
         }
       }}
       onMouseLeave={e => {
-        // NavLink handles active state via style prop, just reset hover
-        const link = e.currentTarget;
-        if (link.getAttribute("aria-current") !== "page") {
-          link.style.color = "";
-          link.style.background = "";
+        if (e.currentTarget.getAttribute("aria-current") !== "page") {
+          e.currentTarget.style.background = "";
+          e.currentTarget.style.color = "";
         }
       }}
     >
@@ -197,8 +163,7 @@ function SidebarLink({ to, label, icon, exact = false }) {
   );
 }
 
-// ─── Icons (simple SVG, 16×16) ────────────────────────────────────────────────
-
+// ─── Icons ────────────────────────────────────────────────────────
 function GridIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -209,7 +174,6 @@ function GridIcon() {
     </svg>
   );
 }
-
 function RevenueIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -218,7 +182,6 @@ function RevenueIcon() {
     </svg>
   );
 }
-
 function FunnelIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -226,7 +189,6 @@ function FunnelIcon() {
     </svg>
   );
 }
-
 function VehicleIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -237,7 +199,6 @@ function VehicleIcon() {
     </svg>
   );
 }
-
 function ClientIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
