@@ -1,124 +1,183 @@
-// Charts.jsx — Power BI light theme
-import { useState } from "react";
 import {
-  LineChart, Line, BarChart, Bar, AreaChart, Area,
+  BarChart, Bar,
+  LineChart, Line,
+  AreaChart, Area,
   PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ComposedChart,
+  XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
-// Power BI palette
-const PBI_BLUE   = "#0078d4";
-const PBI_COLORS = [
-  "#0078d4", // blue
-  "#00b4d8", // cyan
-  "#7c3aed", // purple
-  "#f59e0b", // amber
-  "#e84393", // pink
-  "#107c10", // green
-  "#d13438", // red
-  "#8764b8", // violet
-];
+// ─── Power BI design tokens ───────────────────────────────────────────────────
+const PBI = {
+  colors: [
+    "#118DFF", // blue       (primary)
+    "#E66C37", // orange
+    "#12239E", // dark blue
+    "#ECC846", // yellow
+    "#00B5D0", // teal
+    "#8764B8", // purple
+    "#D13438", // red
+    "#107C10", // green
+  ],
+  bg:          "#FFFFFF",
+  cardBg:      "#FFFFFF",
+  pageBg:      "#F3F2F1",
+  border:      "#E1DFDD",
+  textPrimary: "#252423",
+  textMuted:   "#605E5C",
+  gridLine:    "#E1DFDD",
+  font:        "'Segoe UI', 'Segoe UI Web (West European)', sans-serif",
+};
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
+// ─── Shared card wrapper ──────────────────────────────────────────────────────
+const cardStyle = {
+  background: PBI.cardBg,
+  border: `1px solid ${PBI.border}`,
+  borderRadius: 4,
+  padding: "20px 24px 16px",
+  fontFamily: PBI.font,
+  boxShadow: "0 1.6px 3.6px rgba(0,0,0,.08), 0 0.3px 0.9px rgba(0,0,0,.05)",
+};
 
-// ── Light tooltip (Power BI card style) ──────────────────────────
-function LightTooltip({ active, payload, label, formatter }) {
+const titleStyle = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: PBI.textPrimary,
+  marginBottom: 4,
+  letterSpacing: 0.1,
+};
+
+const subtitleStyle = {
+  fontSize: 11,
+  color: PBI.textMuted,
+  marginBottom: 16,
+};
+
+// ─── Shared axis / grid props ─────────────────────────────────────────────────
+const axisProps = {
+  tick:        { fontSize: 11, fill: PBI.textMuted, fontFamily: PBI.font },
+  axisLine:    { stroke: PBI.border },
+  tickLine:    false,
+};
+
+const gridProps = {
+  stroke:          PBI.gridLine,
+  strokeDasharray: "0",         // Power BI uses solid hairlines, not dashes
+  vertical:        false,
+};
+
+// ─── Custom tooltip ───────────────────────────────────────────────────────────
+const PBITooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background: "#fff",
-      border: "1px solid #d2d0ce",
-      borderRadius: 4,
-      padding: "10px 14px",
-      boxShadow: "0 4px 16px rgba(0,0,0,.12)",
-      fontSize: 12,
-      minWidth: 140,
-    }}>
-      <p style={{ marginBottom: 6, fontWeight: 600, color: "#605e5c", fontSize: 11 }}>{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.dataKey ?? entry.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
-          <span style={{ width: 8, height: 8, borderRadius: 2, background: entry.color || entry.stroke || entry.fill, flexShrink: 0 }} />
-          <span style={{ color: "#605e5c", flex: 1 }}>{entry.dataKey ?? entry.name}</span>
-          <span style={{ fontWeight: 600, color: "#201f1e", marginLeft: 12 }}>
-            {formatter ? formatter(entry.value) : entry.value}
-          </span>
-        </div>
+    <div
+      style={{
+        background: "#FFFFFF",
+        border: `1px solid ${PBI.border}`,
+        borderRadius: 2,
+        padding: "8px 12px",
+        fontFamily: PBI.font,
+        boxShadow: "0 2px 8px rgba(0,0,0,.12)",
+        fontSize: 12,
+      }}
+    >
+      {label && (
+        <p style={{ margin: "0 0 6px", fontWeight: 600, color: PBI.textPrimary }}>
+          {label}
+        </p>
+      )}
+      {payload.map((entry, i) => (
+        <p key={i} style={{ margin: "2px 0", color: entry.color }}>
+          <span style={{ color: PBI.textMuted }}>{entry.name}: </span>
+          <strong>{entry.value?.toLocaleString()}</strong>
+        </p>
       ))}
     </div>
   );
-}
+};
 
-const fmt = (n) => `${Intl.NumberFormat("fr-FR").format(n)} TND`;
+// ─── Custom legend ────────────────────────────────────────────────────────────
+const PBILegend = ({ payload }) => (
+  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
+    {payload.map((entry, i) => (
+      <span
+        key={i}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          fontSize: 11,
+          color: PBI.textMuted,
+          fontFamily: PBI.font,
+        }}
+      >
+        <span
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 1,
+            background: entry.color,
+            display: "inline-block",
+            flexShrink: 0,
+          }}
+        />
+        {entry.value}
+      </span>
+    ))}
+  </div>
+);
 
-// ── Multi-line revenue chart ──────────────────────────────────────
-export function RevenueLineChart({ data, series }) {
+// ─── Custom pie label ─────────────────────────────────────────────────────────
+const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name }) => {
+  const RADIAN = Math.PI / 180;
+  const r  = outerRadius + 22;
+  const x  = cx + r * Math.cos(-midAngle * RADIAN);
+  const y  = cy + r * Math.sin(-midAngle * RADIAN);
+  if (percent < 0.05) return null;
   return (
-    <div style={{ marginTop: 24, height: 240 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-          <CartesianGrid vertical={false} stroke="#edebe9" strokeWidth={1} />
-          <XAxis dataKey="date" tickLine={false} axisLine={false}
-            tick={{ fontSize: 11, fill: "#a19f9d" }} dy={8} />
-          <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#a19f9d" }} width={60}
-            tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
-          <Tooltip content={<LightTooltip formatter={fmt} />}
-            cursor={{ stroke: "#d2d0ce", strokeWidth: 1 }} />
-          {series.map((s) => (
-            <Line key={s.key} type="monotone" dataKey={s.key}
-              stroke={s.stroke} strokeWidth={2} dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff", fill: s.stroke }} />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <text
+      x={x}
+      y={y}
+      fill={PBI.textMuted}
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+      style={{ fontSize: 11, fontFamily: PBI.font }}
+    >
+      {name} ({(percent * 100).toFixed(0)}%)
+    </text>
   );
-}
+};
 
-// ── Agency legend rows ────────────────────────────────────────────
-export function AgencyLegend({ agencies, series }) {
+// ─────────────────────────────────────────────────────────────────────────────
+//  1. BarChart
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Power BI–styled bar chart.
+ *
+ * @param {string}   title      - Card heading
+ * @param {string}   [subtitle] - Optional card subheading
+ * @param {Array}    data       - Array of data objects
+ * @param {string}   xKey       - Key for the X axis (category)
+ * @param {string[]} yKeys      - Keys for the bars (one bar per key)
+ * @param {number}   [height]   - Chart height in px (default 260)
+ */
+export function PBIBarChart({ title, subtitle, data, xKey, yKeys, height = 260 }) {
   return (
-    <ul style={{
-      marginTop: 20, paddingTop: 20,
-      borderTop: "1px solid #edebe9",
-      display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px,1fr))", gap: "12px 24px",
-    }}>
-      {agencies.map((a) => {
-        const s = series.find((s) => s.key === a.agency);
-        return (
-          <li key={a.agency} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: s?.stroke, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#201f1e" }}>{a.agency}</span>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: a.changeType === "positive" ? "#107c10" : "#d13438", margin: 0 }}>{a.change}</p>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#201f1e" }}>{a.totalFmt}</span>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-// ── Funnel stacked bar chart ──────────────────────────────────────
-const FUNNEL_COLORS = { Opportunities: "#0078d4", Quotes: "#7c3aed", Sales: "#107c10" };
-
-export function FunnelBarChart({ data }) {
-  return (
-    <div style={{ height: 200 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }} barCategoryGap="28%">
-          <CartesianGrid vertical={false} stroke="#edebe9" />
-          <XAxis dataKey="date" tickLine={false} axisLine={false}
-            tick={{ fontSize: 11, fill: "#a19f9d" }} interval="preserveStartEnd" />
-          <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#a19f9d" }} width={32} />
-          <Tooltip content={<LightTooltip />} cursor={{ fill: "#f3f2f1" }} />
-          {Object.entries(FUNNEL_COLORS).map(([key, color], i, arr) => (
-            <Bar key={key} dataKey={key} stackId="a" fill={color}
-              radius={i === arr.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+    <div style={cardStyle}>
+      {title    && <p style={titleStyle}>{title}</p>}
+      {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={data} barCategoryGap="35%" barGap={3}
+          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey={xKey} {...axisProps} />
+          <YAxis {...axisProps} />
+          <Tooltip content={<PBITooltip />} cursor={{ fill: "rgba(17,141,255,.06)" }} />
+          <Legend content={<PBILegend />} />
+          {yKeys.map((key, i) => (
+            <Bar key={key} dataKey={key} fill={PBI.colors[i % PBI.colors.length]}
+              radius={[2, 2, 0, 0]} maxBarSize={48} />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -126,193 +185,224 @@ export function FunnelBarChart({ data }) {
   );
 }
 
-// ── Funnel legend summary ─────────────────────────────────────────
-export function FunnelLegend({ data }) {
-  const keys = ["Opportunities", "Quotes", "Sales"];
-  const totals = keys.map((k) => data.reduce((s, d) => s + (d[k] || 0), 0));
+// ─────────────────────────────────────────────────────────────────────────────
+//  2. LineChart
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Power BI–styled line chart.
+ *
+ * @param {string}   title
+ * @param {string}   [subtitle]
+ * @param {Array}    data
+ * @param {string}   xKey
+ * @param {string[]} yKeys
+ * @param {number}   [height]
+ */
+export function PBILineChart({ title, subtitle, data, xKey, yKeys, height = 260 }) {
   return (
-    <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-      {keys.map((k, i) => (
-        <li key={k} style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 0", borderBottom: i < keys.length - 1 ? "1px solid #edebe9" : "none",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 12, height: 3, borderRadius: 2, background: FUNNEL_COLORS[k] }} />
-            <span style={{ fontSize: 13, color: "#605e5c" }}>{k}</span>
-          </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#201f1e" }}>{totals[i]}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ── Agency comparison clickable bars ─────────────────────────────
-export function AgencyComparisonBar({ data, dataKey, color = PBI_BLUE, formatter, onBarClick, selectedAgency }) {
-  const max = Math.max(...data.map((d) => d[dataKey]));
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {data.map((item) => {
-        const pct = Math.round((item[dataKey] / max) * 100);
-        const isSelected = selectedAgency === item.agency;
-        return (
-          <button key={item.agency} onClick={() => onBarClick && onBarClick(item.agency)}
-            style={{
-              width: "100%", textAlign: "left",
-              background: isSelected ? "#deecf9" : "#faf9f8",
-              border: `1px solid ${isSelected ? "#0078d4" : "#edebe9"}`,
-              borderRadius: 4, padding: "10px 14px", cursor: "pointer",
-              transition: "all 0.12s",
-            }}
-            onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.background = "#f3f2f1"; e.currentTarget.style.borderColor = "#d2d0ce"; }}}
-            onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.background = "#faf9f8"; e.currentTarget.style.borderColor = "#edebe9"; }}}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: isSelected ? "#0078d4" : "#201f1e" }}>{item.agency}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#201f1e" }}>
-                {formatter ? formatter(item[dataKey]) : item[dataKey]}
-              </span>
-            </div>
-            <div style={{ height: 6, borderRadius: 3, background: "#edebe9", overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 3,
-                background: isSelected ? PBI_BLUE : color,
-                width: `${pct}%`,
-                transition: "width 0.5s ease",
-              }} />
-            </div>
-            {isSelected && (
-              <p style={{ margin: "6px 0 0", fontSize: 11, color: "#0078d4", fontWeight: 600 }}>
-                Click again to collapse · detail below ↓
-              </p>
-            )}
-          </button>
-        );
-      })}
+    <div style={cardStyle}>
+      {title    && <p style={titleStyle}>{title}</p>}
+      {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey={xKey} {...axisProps} />
+          <YAxis {...axisProps} />
+          <Tooltip content={<PBITooltip />} />
+          <Legend content={<PBILegend />} />
+          {yKeys.map((key, i) => (
+            <Line key={key} type="linear" dataKey={key}
+              stroke={PBI.colors[i % PBI.colors.length]}
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: PBI.colors[i % PBI.colors.length], strokeWidth: 0 }}
+              activeDot={{ r: 5 }} />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-// ── Donut chart ───────────────────────────────────────────────────
-export function CategoryDonutChart({ data, dataKey = "sales", nameKey = "category" }) {
-  const [active, setActive] = useState(null);
-  const total = data.reduce((s, d) => s + d[dataKey], 0);
+// ─────────────────────────────────────────────────────────────────────────────
+//  3. AreaChart
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Power BI–styled area chart.
+ *
+ * @param {string}   title
+ * @param {string}   [subtitle]
+ * @param {Array}    data
+ * @param {string}   xKey
+ * @param {string[]} yKeys
+ * @param {boolean}  [stacked]  - Stack areas (default false)
+ * @param {number}   [height]
+ */
+export function PBIAreaChart({ title, subtitle, data, xKey, yKeys, stacked = false, height = 260 }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "center" }}>
-      <div style={{ position: "relative", height: 200 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
-              paddingAngle={2} dataKey={dataKey} strokeWidth={0}
-              onMouseEnter={(_, i) => setActive(i)}
-              onMouseLeave={() => setActive(null)}>
-              {data.map((_, i) => (
-                <Cell key={i} fill={PBI_COLORS[i % PBI_COLORS.length]}
-                  opacity={active === null || active === i ? 1 : 0.25} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div style={{
-          position: "absolute", inset: 0,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          pointerEvents: "none",
-        }}>
-          <span style={{ fontSize: 11, color: "#a19f9d" }}>Total</span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#201f1e" }}>{total}</span>
-        </div>
-      </div>
-      <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-        {data.map((item, i) => (
-          <li key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "default" }}
-            onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: 2, flexShrink: 0,
-                background: PBI_COLORS[i % PBI_COLORS.length],
-                opacity: active === null || active === i ? 1 : 0.3,
-              }} />
-              <span style={{ fontSize: 12, color: "#605e5c" }}>{item[nameKey]}</span>
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#201f1e" }}>{item[dataKey]}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-// ── Mini horizontal bars ──────────────────────────────────────────
-export function MiniBarChart({ data, nameKey, valueKey, color = PBI_BLUE }) {
-  const max = Math.max(...data.map((d) => d[valueKey]));
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {data.map((item, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 11, color: "#605e5c", width: 90, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item[nameKey]}</span>
-          <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#edebe9", overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: 3, background: color,
-              width: `${Math.round((item[valueKey] / max) * 100)}%`,
-            }} />
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#201f1e", width: 24, textAlign: "right" }}>{item[valueKey]}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── City distribution bars ────────────────────────────────────────
-export function CityBarChart({ data }) {
-  const max = Math.max(...data.map((d) => d.clients));
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {data.map((item) => (
-        <div key={item.city} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 11, color: "#605e5c", width: 72, flexShrink: 0 }}>{item.city}</span>
-          <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#edebe9", overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: 3, background: "#107c10",
-              width: `${Math.round((item.clients / max) * 100)}%`,
-            }} />
-          </div>
-          <div style={{ display: "flex", gap: 8, fontSize: 11 }}>
-            <span style={{ color: "#a19f9d" }}>+{item.newClients}</span>
-            <span style={{ fontWeight: 600, color: "#201f1e", width: 28, textAlign: "right" }}>{item.clients}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Revenue area chart ────────────────────────────────────────────
-export function RevenueAreaChart({ data }) {
-  return (
-    <div style={{ height: 200, marginTop: 8 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+    <div style={cardStyle}>
+      {title    && <p style={titleStyle}>{title}</p>}
+      {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
           <defs>
-            <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"  stopColor={PBI_BLUE} stopOpacity={0.15} />
-              <stop offset="95%" stopColor={PBI_BLUE} stopOpacity={0} />
-            </linearGradient>
+            {yKeys.map((key, i) => (
+              <linearGradient key={key} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={PBI.colors[i % PBI.colors.length]} stopOpacity={0.18} />
+                <stop offset="95%" stopColor={PBI.colors[i % PBI.colors.length]} stopOpacity={0.02} />
+              </linearGradient>
+            ))}
           </defs>
-          <CartesianGrid vertical={false} stroke="#edebe9" />
-          <XAxis dataKey="date" tickLine={false} axisLine={false}
-            tick={{ fontSize: 11, fill: "#a19f9d" }} interval="preserveStartEnd" />
-          <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#a19f9d" }} width={60}
-            tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
-          <Tooltip content={<LightTooltip formatter={fmt} />}
-            cursor={{ stroke: "#d2d0ce", strokeWidth: 1, strokeDasharray: "4 2" }} />
-          <Area type="monotone" dataKey="Target" stroke="#f59e0b" strokeWidth={1.5}
-            strokeDasharray="4 2" fill="none" dot={false} />
-          <Area type="monotone" dataKey="Revenue" stroke={PBI_BLUE} strokeWidth={2}
-            fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: PBI_BLUE, strokeWidth: 2, stroke: "#fff" }} />
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey={xKey} {...axisProps} />
+          <YAxis {...axisProps} />
+          <Tooltip content={<PBITooltip />} />
+          <Legend content={<PBILegend />} />
+          {yKeys.map((key, i) => (
+            <Area key={key} type="linear" dataKey={key}
+              stroke={PBI.colors[i % PBI.colors.length]}
+              strokeWidth={2.5}
+              fill={`url(#grad-${key})`}
+              stackId={stacked ? "stack" : undefined}
+              dot={{ r: 3, fill: PBI.colors[i % PBI.colors.length], strokeWidth: 0 }}
+              activeDot={{ r: 5 }} />
+          ))}
         </AreaChart>
       </ResponsiveContainer>
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  4. PieChart / Donut
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Power BI–styled donut/pie chart.
+ *
+ * @param {string}  title
+ * @param {string}  [subtitle]
+ * @param {Array}   data       - Array of { name, value }
+ * @param {boolean} [donut]    - Render as donut (default true)
+ * @param {number}  [height]
+ */
+export function PBIPieChart({ title, subtitle, data, donut = true, height = 280 }) {
+  const inner = donut ? "52%" : "0%";
+  return (
+    <div style={cardStyle}>
+      {title    && <p style={titleStyle}>{title}</p>}
+      {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
+      <ResponsiveContainer width="100%" height={height}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={inner}
+            outerRadius="68%"
+            paddingAngle={2}
+            dataKey="value"
+            labelLine={false}
+            label={renderPieLabel}
+          >
+            {data.map((_, i) => (
+              <Cell key={i} fill={PBI.colors[i % PBI.colors.length]} stroke="none" />
+            ))}
+          </Pie>
+          <Tooltip content={<PBITooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+      {/* manual legend below the chart */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+        {data.map((entry, i) => (
+          <span key={i} style={{ display: "flex", alignItems: "center", gap: 5,
+            fontSize: 11, color: PBI.textMuted, fontFamily: PBI.font }}>
+            <span style={{ width: 10, height: 10, borderRadius: 1,
+              background: PBI.colors[i % PBI.colors.length], display: "inline-block" }} />
+            {entry.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  5. ComposedChart  (Bar + Line)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Power BI–styled composed chart (bars + overlay lines).
+ *
+ * @param {string}   title
+ * @param {string}   [subtitle]
+ * @param {Array}    data
+ * @param {string}   xKey
+ * @param {string[]} barKeys    - Keys rendered as bars
+ * @param {string[]} lineKeys   - Keys rendered as lines on top
+ * @param {number}   [height]
+ */
+export function PBIComposedChart({ title, subtitle, data, xKey, barKeys, lineKeys, height = 280 }) {
+  const allKeys   = [...barKeys, ...lineKeys];
+  const lineStart = barKeys.length;              // color offset for lines
+  return (
+    <div style={cardStyle}>
+      {title    && <p style={titleStyle}>{title}</p>}
+      {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
+      <ResponsiveContainer width="100%" height={height}>
+        <ComposedChart data={data} barCategoryGap="35%"
+          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey={xKey} {...axisProps} />
+          <YAxis {...axisProps} />
+          <Tooltip content={<PBITooltip />} cursor={{ fill: "rgba(17,141,255,.06)" }} />
+          <Legend content={<PBILegend />} />
+          {barKeys.map((key, i) => (
+            <Bar key={key} dataKey={key}
+              fill={PBI.colors[i % PBI.colors.length]}
+              radius={[2, 2, 0, 0]} maxBarSize={48} />
+          ))}
+          {lineKeys.map((key, i) => (
+            <Line key={key} type="linear" dataKey={key}
+              stroke={PBI.colors[(lineStart + i) % PBI.colors.length]}
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: PBI.colors[(lineStart + i) % PBI.colors.length], strokeWidth: 0 }}
+              activeDot={{ r: 5 }} />
+          ))}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  6. KPI card  (bonus — like Power BI's card visual)
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Power BI–styled KPI card.
+ *
+ * @param {string} label
+ * @param {string|number} value
+ * @param {string} [trend]   - e.g. "+12.4%" shown in green/red
+ * @param {string} [trendDir] - "up" | "down" (controls color)
+ */
+export function PBICard({ label, value, trend, trendDir = "up" }) {
+  const trendColor = trendDir === "up" ? "#107C10" : "#D13438";
+  return (
+    <div style={{ ...cardStyle, padding: "16px 20px" }}>
+      <p style={{ ...subtitleStyle, marginBottom: 6 }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 28, fontWeight: 600,
+        color: PBI.textPrimary, fontFamily: PBI.font, lineHeight: 1.2 }}>
+        {value}
+      </p>
+      {trend && (
+        <p style={{ margin: "4px 0 0", fontSize: 12,
+          color: trendColor, fontFamily: PBI.font }}>
+          {trend}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Export palette for reuse elsewhere
+// ─────────────────────────────────────────────────────────────────────────────
+export { PBI };

@@ -8,13 +8,10 @@ import Login            from "./pages/Login";
 import Admin            from "./pages/Admin";
 import DataManagement   from "./pages/DataManagement";
 import Profile          from "./pages/Profile";
+import DashboardOverview from "./pages/Dashboard";
 
 // Dashboard pages
-import DashboardOverview  from "./pages/Dashboard";
-import RevenuePage        from "./pages/dashboards/RevenuePage";
-import FunnelPage         from "./pages/dashboards/FunnelPage";
-import VehiclesPage       from "./pages/dashboards/VehiclesPage";
-import ClientsPage        from "./pages/dashboards/ClientsPage";
+
 
 const DASHBOARD_ROLES = [
   "Administrateur BI",
@@ -36,28 +33,6 @@ export default function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
                 <DashboardOverview />
-              </ProtectedRoute>
-            } />
-
-            {/* Dashboard — section pages */}
-            <Route path="/dashboard/revenue" element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                <RevenuePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/funnel" element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                <FunnelPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/vehicles" element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                <VehiclesPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/clients" element={
-              <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                <ClientsPage />
               </ProtectedRoute>
             } />
 
