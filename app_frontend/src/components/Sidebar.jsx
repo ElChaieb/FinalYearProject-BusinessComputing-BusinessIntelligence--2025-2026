@@ -10,11 +10,11 @@ const ALL_ROLES = [  "Administrateur BI",
 const DASHBOARD_ROLES = [...ALL_ROLES];
 
 const DASHBOARD_SECTIONS = [
-  { label: "Overview",  path: "/dashboard",          icon: GridIcon  },
-  { label: "Revenue",   path: "/dashboard/revenue",  icon: RevenueIcon },
-  { label: "Funnel",    path: "/dashboard/funnel",   icon: FunnelIcon },
-  { label: "Vehicles",  path: "/dashboard/vehicles", icon: VehicleIcon },
-  { label: "Clients",   path: "/dashboard/clients",  icon: ClientIcon },
+  { label: "Overview",  path: "/dashboards/Overview",          icon: GridIcon  },
+  { label: "Revenue",   path: "/Dashboards/Revenue",  icon: RevenueIcon },
+  { label: "Funnel",    path: "/dashboard/Funnel",   icon: FunnelIcon },
+  { label: "Vehicles",  path: "/dashboard/Trends", icon: VehicleIcon },
+  { label: "Clients",   path: "/dashboard/ClientBase",  icon: ClientIcon },
 ];
 
 const TOP_NAV = [
@@ -75,7 +75,7 @@ export default function Sidebar() {
               Dashboard
             </div>
             {DASHBOARD_SECTIONS.map(({ label, path, icon: Icon }) => (
-              <SidebarLink key={path} to={path} label={label} icon={<Icon />} exact={path === "/dashboard"} />
+              <SidebarLink key={path} to={path} label={label} icon={<Icon />} exact={path === "/Dashboards"} />
             ))}
           </div>
         )}
