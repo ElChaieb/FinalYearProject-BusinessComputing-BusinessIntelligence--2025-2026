@@ -288,7 +288,6 @@ export default function Admin() {
             </div>
           )}
         </div>
-      
 
       {/* Confirmation modal */}
       {confirm && (
