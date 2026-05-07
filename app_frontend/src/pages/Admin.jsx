@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
+
 import api from "../api/axios";
 
 const ROLES = [
@@ -110,7 +110,6 @@ export default function Admin() {
     <div className="flex">
       <Sidebar />
       <div className="ml-64 flex-1 min-h-screen bg-gray-50">
-        <Navbar title="Admin Panel" />
         <div className="pt-20 p-6 max-w-5xl">
 
           {/* Tabs */}

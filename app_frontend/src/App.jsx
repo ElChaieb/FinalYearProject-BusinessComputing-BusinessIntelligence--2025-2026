@@ -1,28 +1,29 @@
-// App.jsx — updated with per-section dashboard routes
-
+// App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { FilterProvider } from "./context/FilterContext";
+import { FilterProvider } from "./components/FilterContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import DataManagement from "./pages/DataManagement";
 import Profile from "./pages/Profile";
-import DashboardOverview from "./pages/Dashboards/Overview";
-import Revenue from "./pages/Dashboards/Revenue";
-import Funnel from "./pages/Dashboards/Funnel";
-import ClientBase from "./pages/Dashboards/ClientBase";
-import Trends from "./pages/Dashboards/Trends";
 
-// Dashboard pages
+// Directors dashboard pages
+import DirectorRevenue from "./pages/Directors/DirectorRevenue";
+import DirectorFunnel from "./pages/Directors/DirectorFunnel";
+import DirectorTrends from "./pages/Directors/DirectorTrends";
 
-const DASHBOARD_ROLES = [
-  "Administrateur BI",
-  "General Director",
-  "Commercial Director",
-  "Agency Manager",
-  "Commercial",
-];
+// Agency dashboard pages
+import AgencyRevenue from "./pages/Agency/AgencyRevenue";
+import AgencyFunnel from "./pages/Agency/AgencyFunnel";
+import AgencyTrends from "./pages/Agency/AgencyTrends";
+
+// Commercial dashboard pages
+import CommercialRevenue from "./pages/Commercial/CommercialRevenue";
+
+const DIRECTOR_ROLES   = ["Administrateur BI", "General Director", "Commercial Director"];
+const AGENCY_ROLES     = ["Agency Manager"];
+const COMMERCIAL_ROLES = ["Commercial"];
 
 export default function App() {
   return (
@@ -30,77 +31,29 @@ export default function App() {
       <FilterProvider>
         <BrowserRouter>
           <Routes>
+
+            {/* Public */}
             <Route path="/login" element={<Login />} />
 
-            {/* Dashboard — overview (landing) */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                  <DashboardOverview />
-                </ProtectedRoute>
-              }
-            />
+            {/* Directors dashboard — Admin + both Directors */}
+            <Route path="/directors/revenue" element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorRevenue /></ProtectedRoute>} />
+            <Route path="/directors/funnel"  element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorFunnel /></ProtectedRoute>} />
+            <Route path="/directors/trends"  element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorTrends /></ProtectedRoute>} />
 
-            {/* Dashboard — specific sections */}
-            <Route
-              path="/dashboard/revenue"
-              element={
-                <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                  <Revenue />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/funnel"
-              element={
-                <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                  <Funnel />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/clients"
-              element={
-                <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                  <ClientBase />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/vehicles"
-              element={
-                <ProtectedRoute allowedRoles={DASHBOARD_ROLES}>
-                  <Trends />
-                </ProtectedRoute>
-              }
-            />
+            {/* Agency dashboard — Agency Manager */}
+            <Route path="/agency/revenue" element={<ProtectedRoute allowedRoles={AGENCY_ROLES}><AgencyRevenue /></ProtectedRoute>} />
+            <Route path="/agency/funnel"  element={<ProtectedRoute allowedRoles={AGENCY_ROLES}><AgencyFunnel /></ProtectedRoute>} />
+            <Route path="/agency/trends"  element={<ProtectedRoute allowedRoles={AGENCY_ROLES}><AgencyTrends /></ProtectedRoute>} />
 
-            {/* Other pages */}
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute allowedRoles={["Administrateur BI"]}>
-                  <Admin />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/data"
-              element={
-                <ProtectedRoute allowedRoles={["Administrateur BI"]}>
-                  <DataManagement />
-                </ProtectedRoute>
-              }
-            />
+            {/* Commercial dashboard — Commercial */}
+            <Route path="/commercial/revenue" element={<ProtectedRoute allowedRoles={COMMERCIAL_ROLES}><CommercialRevenue /></ProtectedRoute>} />
+
+            {/* Admin-only */}
+            <Route path="/admin"   element={<ProtectedRoute allowedRoles={["Administrateur BI"]}><Admin /></ProtectedRoute>} />
+            <Route path="/data"    element={<ProtectedRoute allowedRoles={["Administrateur BI"]}><DataManagement /></ProtectedRoute>} />
+
+            {/* Profile */}
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/login" />} />
           </Routes>

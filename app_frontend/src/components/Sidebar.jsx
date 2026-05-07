@@ -1,32 +1,59 @@
-// components/Sidebar.jsx — Power BI light theme
+// components/Sidebar.jsx
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const ALL_ROLES = [  "Administrateur BI",
+// ─── Role sets ────────────────────────────────────────────────────
+const ALL_ROLES = [
+  "Administrateur BI",
   "General Director",
   "Commercial Director",
   "Agency Manager",
-  "Commercial"];
-const DASHBOARD_ROLES = [...ALL_ROLES];
-
-const DASHBOARD_SECTIONS = [
-  { label: "Overview",  path: "/dashboards/Overview",          icon: GridIcon  },
-  { label: "Revenue",   path: "/Dashboards/Revenue",  icon: RevenueIcon },
-  { label: "Funnel",    path: "/dashboard/Funnel",   icon: FunnelIcon },
-  { label: "Vehicles",  path: "/dashboard/Trends", icon: VehicleIcon },
-  { label: "Clients",   path: "/dashboard/ClientBase",  icon: ClientIcon },
+  "Commercial",
 ];
 
+const DIRECTOR_ROLES   = ["Administrateur BI", "General Director", "Commercial Director"];
+const AGENCY_ROLES     = ["Agency Manager"];
+const COMMERCIAL_ROLES = ["Commercial"];
+
+// ─── Dashboard nav sections (role-gated) ──────────────────────────
+// Each entry: { label, path, icon, roles }
+const DASHBOARD_NAV = [
+  // Directors dashboard
+  { label: "Revenue", path: "/directors/revenue", icon: RevenueIcon, roles: DIRECTOR_ROLES },
+  { label: "Funnel",  path: "/directors/funnel",  icon: FunnelIcon,  roles: DIRECTOR_ROLES },
+  { label: "Trends",  path: "/directors/trends",  icon: TrendsIcon,  roles: DIRECTOR_ROLES },
+
+  // Agency dashboard
+  { label: "Revenue", path: "/agency/revenue", icon: RevenueIcon, roles: AGENCY_ROLES },
+  { label: "Funnel",  path: "/agency/funnel",  icon: FunnelIcon,  roles: AGENCY_ROLES },
+  { label: "Trends",  path: "/agency/trends",  icon: TrendsIcon,  roles: AGENCY_ROLES },
+
+  // Commercial dashboard
+  { label: "Revenue", path: "/commercial/revenue", icon: RevenueIcon, roles: COMMERCIAL_ROLES },
+];
+
+// ─── Top nav (admin/profile links) ────────────────────────────────
 const TOP_NAV = [
   { label: "Admin Panel",     path: "/admin",   roles: ["Administrateur BI"] },
   { label: "Data Management", path: "/data",    roles: ["Administrateur BI"] },
   { label: "My Profile",      path: "/profile", roles: ALL_ROLES },
 ];
 
+// ─── Dashboard section label per role ─────────────────────────────
+function getDashboardLabel(role) {
+  if (DIRECTOR_ROLES.includes(role))   return "Directors Dashboard";
+  if (AGENCY_ROLES.includes(role))     return "Agency Dashboard";
+  if (COMMERCIAL_ROLES.includes(role)) return "My Dashboard";
+  return "Dashboard";
+}
+
+// ─── Component ────────────────────────────────────────────────────
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const location = useLocation();
-  const filteredTop = TOP_NAV.filter((item) => item.roles.includes(user?.role));
+  const role = user?.role;
+
+  const dashboardLinks = DASHBOARD_NAV.filter((item) => item.roles.includes(role));
+  const topLinks       = TOP_NAV.filter((item) => item.roles.includes(role));
 
   const initials = (user?.name ?? "?")
     .split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -58,35 +85,34 @@ export default function Sidebar() {
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#201f1e", letterSpacing: "-0.01em" }}>BI App</div>
-            <div style={{ fontSize: 11, color: "#a19f9d", marginTop: 1 }}>{user?.role}</div>
+            <div style={{ fontSize: 11, color: "#a19f9d", marginTop: 1 }}>{role}</div>
           </div>
         </div>
       </div>
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
-        {DASHBOARD_ROLES.includes(user?.role) && (
+
+        {/* Dashboard section */}
+        {dashboardLinks.length > 0 && (
           <div style={{ marginBottom: 8 }}>
-            <div style={{
-              fontSize: 10, fontWeight: 700, color: "#a19f9d",
-              letterSpacing: "0.08em", textTransform: "uppercase",
-              padding: "4px 10px 8px",
-            }}>
-              Dashboard
-            </div>
-            {DASHBOARD_SECTIONS.map(({ label, path, icon: Icon }) => (
-              <SidebarLink key={path} to={path} label={label} icon={<Icon />} exact={path === "/Dashboards"} />
+            <SectionLabel>{getDashboardLabel(role)}</SectionLabel>
+            {dashboardLinks.map(({ label, path, icon: Icon }) => (
+              <SidebarLink key={path} to={path} label={label} icon={<Icon />} />
             ))}
           </div>
         )}
 
-        {filteredTop.length > 0 && (
-          <div style={{ height: 1, background: "#edebe9", margin: "8px 0 12px" }} />
+        {/* Divider before admin/profile links */}
+        {topLinks.length > 0 && (
+          <>
+            <div style={{ height: 1, background: "#edebe9", margin: "8px 0 12px" }} />
+            <SectionLabel>General</SectionLabel>
+            {topLinks.map(({ label, path }) => (
+              <SidebarLink key={path} to={path} label={label} />
+            ))}
+          </>
         )}
-
-        {filteredTop.map(({ label, path }) => (
-          <SidebarLink key={path} to={path} label={label} />
-        ))}
       </nav>
 
       {/* User footer */}
@@ -131,11 +157,23 @@ export default function Sidebar() {
   );
 }
 
-function SidebarLink({ to, label, icon, exact = false }) {
+// ─── Sub-components ───────────────────────────────────────────────
+function SectionLabel({ children }) {
+  return (
+    <div style={{
+      fontSize: 10, fontWeight: 700, color: "#a19f9d",
+      letterSpacing: "0.08em", textTransform: "uppercase",
+      padding: "4px 10px 8px",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SidebarLink({ to, label, icon }) {
   return (
     <NavLink
       to={to}
-      end={exact}
       style={({ isActive }) => ({
         display: "flex", alignItems: "center", gap: 9,
         padding: "7px 10px",
@@ -168,16 +206,6 @@ function SidebarLink({ to, label, icon, exact = false }) {
 }
 
 // ─── Icons ────────────────────────────────────────────────────────
-function GridIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".8"/>
-      <rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".8"/>
-      <rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".8"/>
-      <rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".8"/>
-    </svg>
-  );
-}
 function RevenueIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -193,22 +221,12 @@ function FunnelIcon() {
     </svg>
   );
 }
-function VehicleIcon() {
+function TrendsIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <rect x="1" y="6" width="14" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4" fill="none"/>
-      <path d="M3 6 L5 3 H11 L13 6" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-      <circle cx="4.5" cy="12.5" r="1.5" fill="currentColor"/>
-      <circle cx="11.5" cy="12.5" r="1.5" fill="currentColor"/>
-    </svg>
-  );
-}
-function ClientIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4" fill="none"/>
-      <path d="M1 14c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
-      <path d="M11 7c1.1 0 2 .9 2 2M13 14c0-1.66-.9-3.1-2.2-3.87" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+      <path d="M1 14 L5 9 L8 11 L12 6 L15 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="15" cy="4" r="1.5" fill="currentColor"/>
+      <path d="M1 15 H15" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".4"/>
     </svg>
   );
 }

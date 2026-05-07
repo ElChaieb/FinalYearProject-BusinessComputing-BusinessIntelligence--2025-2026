@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -63,7 +62,7 @@ export default function Profile() {
     <div className="flex">
       <Sidebar />
       <div className="ml-64 flex-1 min-h-screen bg-gray-50">
-        <Navbar title="My Profile" />
+
         <div className="pt-20 p-6 max-w-xl space-y-6">
 
           {/* Profile info card */}

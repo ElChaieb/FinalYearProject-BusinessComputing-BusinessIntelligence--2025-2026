@@ -3,6 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 
+const ROLE_HOME = {
+  "Administrateur BI":   "/directors/revenue",
+  "General Director":    "/directors/revenue",
+  "Commercial Director": "/directors/revenue",
+  "Agency Manager":      "/agency/revenue",
+  "Commercial":          "/commercial/revenue",
+};
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -12,31 +20,34 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  try {
-    const params = new URLSearchParams();
-    params.append("username", email);
-    params.append("password", password);
+    try {
+      const params = new URLSearchParams();
+      params.append("username", email);
+      params.append("password", password);
 
-    const res = await api.post("/auth/login", params);
-    const { access_token } = res.data;
+      const res = await api.post("/auth/login", params);
+      const { access_token } = res.data;
 
-    // ✅ Store token BEFORE calling /me so the interceptor attaches it
-    localStorage.setItem("token", access_token);
+      // Store token BEFORE calling /me so the interceptor attaches it
+      localStorage.setItem("token", access_token);
 
-    const userRes = await api.get("/me"); // no manual header needed
+      const userRes = await api.get("/me");
+      const userData = userRes.data;
 
-    login({ ...userRes.data }, access_token);
-    navigate("/dashboard");
-  } catch (err) {
-    localStorage.removeItem("token"); // clean up if /me fails
-    setError("Invalid email or password");
-  } finally {
-    setLoading(false);
-  } 
+      login(userData, access_token);
+
+      const home = ROLE_HOME[userData.role] ?? "/profile";
+      navigate(home);
+    } catch (err) {
+      localStorage.removeItem("token");
+      setError("Invalid email or password");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

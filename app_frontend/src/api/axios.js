@@ -13,23 +13,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// If token is expired or invalid, logout automatically
+// If token is expired or invalid, logout automatically.
+// Skip redirect on auth-flow endpoints so login errors are handled by the form.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  },
-);
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Only redirect if this wasn't the login/me call during auth flow
       const url = error.config?.url || "";
       if (!url.includes("/auth/login") && !url.includes("/me")) {
         localStorage.removeItem("token");
