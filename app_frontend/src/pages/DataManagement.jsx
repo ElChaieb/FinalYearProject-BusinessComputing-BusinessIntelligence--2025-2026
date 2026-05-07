@@ -1,7 +1,7 @@
 // src/pages/DataManagement.jsx
 import { useState, useEffect, useRef } from "react";
 import api from "../api/axios";
-import Sidebar from "../components/Sidebar";
+import Layout from "../components/Layout";
 
 const STATUS = {
   IDLE: "idle",
@@ -103,9 +103,7 @@ export default function DataManagement() {
     status === STATUS.SYNCING;
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="ml-64 flex-1 min-h-screen bg-[#f8fafc]">
+    <Layout style={{ background: "#f8fafc" }}>
         <div style={styles.page}>
           {/* ── Header ── */}
           <div style={styles.header}>
@@ -354,8 +352,7 @@ export default function DataManagement() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Layout>
   );
 }
 

@@ -47,6 +47,7 @@ import {
   FilterBar,
   useFilter,
 } from "../../components/AgencyFilterContext";
+import Layout from "../../components/Layout";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1171,9 +1172,11 @@ const CommercialDonutRow = () => {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ARevenue() {
   return (
-    <FilterProvider>
-      <RevenueInner />
-    </FilterProvider>
+    <Layout>
+      <FilterProvider>
+        <RevenueInner />
+      </FilterProvider>
+    </Layout>
   );
 }
 

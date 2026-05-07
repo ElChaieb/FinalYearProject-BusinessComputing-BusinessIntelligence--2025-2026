@@ -31,6 +31,7 @@ import {
   FilterBar,
   useFilter,
 } from "../../components/CommercialFilterContext";
+import Layout from "../../components/Layout";
 
 const PBI = {
   colors: [
@@ -582,9 +583,11 @@ const RecentDealsTable = () => {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CRevenue() {
   return (
-    <FilterProvider>
-      <RevenueInner />
-    </FilterProvider>
+    <Layout>
+      <FilterProvider>
+        <RevenueInner />
+      </FilterProvider>
+    </Layout>
   );
 }
 

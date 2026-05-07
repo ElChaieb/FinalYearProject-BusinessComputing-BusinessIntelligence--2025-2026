@@ -1,6 +1,7 @@
 // App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { SidebarProvider } from "./context/SidebarContext";
 import { FilterProvider } from "./components/FilterContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -28,6 +29,7 @@ const COMMERCIAL_ROLES = ["Commercial"];
 export default function App() {
   return (
     <AuthProvider>
+      <SidebarProvider>
       <FilterProvider>
         <BrowserRouter>
           <Routes>
@@ -59,6 +61,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </FilterProvider>
+      </SidebarProvider>
     </AuthProvider>
   );
 }

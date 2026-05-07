@@ -55,6 +55,7 @@ import {
   FilterBar,
   useFilter,
 } from "../../components/FilterContext";
+import Layout from "../../components/Layout";
 
 // ─── Design tokens (matching Charts.jsx / Power BI) ───────────────────────────
 const PBI = {
@@ -520,9 +521,11 @@ const DonutCard = ({ title, agencies, valueKey }) => {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function DFunnel() {
   return (
-    <FilterProvider>
-      <FunnelPageInner />
-    </FilterProvider>
+    <Layout>
+      <FilterProvider>
+        <FunnelPageInner />
+      </FilterProvider>
+    </Layout>
   );
 }
 

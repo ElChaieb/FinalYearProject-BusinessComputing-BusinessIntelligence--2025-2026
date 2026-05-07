@@ -2,7 +2,7 @@
 // Covers: US-05 (create user), US-06 (enable/disable), US-07 (user list), US-08 (reset password)
 
 import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
+import Layout from "../components/Layout";
 
 import api from "../api/axios";
 
@@ -107,9 +107,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="ml-64 flex-1 min-h-screen bg-gray-50">
+    <Layout style={{ background: "#f8f9fa" }}>
         <div className="pt-20 p-6 max-w-5xl">
 
           {/* Tabs */}
@@ -290,7 +288,7 @@ export default function Admin() {
             </div>
           )}
         </div>
-      </div>
+      
 
       {/* Confirmation modal */}
       {confirm && (
@@ -333,6 +331,6 @@ export default function Admin() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }

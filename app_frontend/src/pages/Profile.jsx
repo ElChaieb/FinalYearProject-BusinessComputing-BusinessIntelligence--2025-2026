@@ -2,7 +2,7 @@
 // Accessible from the sidebar by all roles.
 
 import { useState } from "react";
-import Sidebar from "../components/Sidebar";
+import Layout from "../components/Layout";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 
@@ -59,9 +59,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="ml-64 flex-1 min-h-screen bg-gray-50">
+    <Layout style={{ background: "#f8f9fa" }}>
 
         <div className="pt-20 p-6 max-w-xl space-y-6">
 
@@ -167,7 +165,6 @@ export default function Profile() {
           </div>
 
         </div>
-      </div>
-    </div>
+    </Layout>
   );
 }

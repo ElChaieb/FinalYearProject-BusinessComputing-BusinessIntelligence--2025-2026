@@ -30,6 +30,7 @@ import {
   FilterBar,
   useFilter,
 } from "../../components/FilterContext_states";
+import Layout from "../../components/Layout";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const PBI = {
@@ -1403,8 +1404,10 @@ function TrendsPage() {
 // ─── Page export ──────────────────────────────────────────────────────────────
 export default function DTrends() {
   return (
-    <FilterProvider>
-      <TrendsPage />
-    </FilterProvider>
+    <Layout>
+      <FilterProvider>
+        <TrendsPage />
+      </FilterProvider>
+    </Layout>
   );
 }
