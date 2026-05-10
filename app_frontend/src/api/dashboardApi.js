@@ -47,6 +47,7 @@ export async function fetchDashboard(path, params = {}, force = false) {
     .get(path, { params })
     .then((res) => res.data)
     .catch((err) => {
+      // Remove failed entries so a retry is possible
       _cache.delete(key);
       throw err;
     });

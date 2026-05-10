@@ -9,6 +9,7 @@
 import { useState, useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { FilterProvider, FilterBar } from "../../components/AgencyFilterContext_states";
+import { useFilter } from "../../components/AgencyFilterContext";
 import Layout from "../../components/Layout";
 import { useAgencyTrendsByCategory, useAgencyTrendsClientsByState, buildCategories, buildStateOrders } from "../../hooks/dashboardHooks";
 
@@ -115,9 +116,11 @@ const TrendsTable = ({categories,expandedCats,toggleCat}) => {
 function TrendsPage() {
   const [expandedCats,setExpandedCats]=useState([]);
   const toggleCat=(id)=>setExpandedCats((prev)=>prev.includes(id)?prev.filter((x)=>x!==id):[...prev,id]);
-  const {data:catData,   loading:l1,error:e1}=useAgencyTrendsByCategory(THIS_YEAR);
-  const {data:stateCur,  loading:l2}           =useAgencyTrendsClientsByState(THIS_YEAR,CUR_MONTH_IDX+1);
-  const {data:statePrev, loading:l3}           =useAgencyTrendsClientsByState(THIS_YEAR,PREV_MONTH_IDX+1);
+  const { selectedYear } = useFilter();
+
+  const {data:catData,   loading:l1,error:e1}=useAgencyTrendsByCategory(selectedYear);
+  const {data:stateCur,  loading:l2}           =useAgencyTrendsClientsByState(selectedYear,CUR_MONTH_IDX+1);
+  const {data:statePrev, loading:l3}           =useAgencyTrendsClientsByState(selectedYear,PREV_MONTH_IDX+1);
   const categories=useMemo(()=>buildCategories(catData?.rows??[],false),[catData]);
   const catTotals =useMemo(()=>categories.map((cat)=>({id:cat.id,label:cat.label,color:cat.color,n:cat.models.flatMap((m)=>m.months).reduce((s,mo)=>s+(mo.n??0),0),nM1:cat.models.flatMap((m)=>m.months).reduce((s,mo)=>s+(mo.nMinus1??0),0)})),[categories]);
   const allModels =useMemo(()=>categories.flatMap((c)=>c.models),[categories]);

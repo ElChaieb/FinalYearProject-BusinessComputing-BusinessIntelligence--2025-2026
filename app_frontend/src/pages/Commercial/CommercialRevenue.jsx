@@ -13,6 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
+import { useFilter } from "../../components/FilterContext"; // year filter
 import { FilterProvider, FilterBar } from "../../components/CommercialFilterContext";
 import Layout from "../../components/Layout";
 import {
@@ -252,9 +253,11 @@ const RecentSalesTable = ({ rows }) => {
 
 // ─── Page inner ────────────────────────────────────────────────────────────────
 function CommercialRevenueInner() {
-  const { data:kpiData,     loading:l1, error:e1 } = useMeRevenueKpis(THIS_YEAR);
-  const { data:monthlyData, loading:l2, error:e2 } = useMeRevenueMonthly(THIS_YEAR);
-  const { data:catData,     loading:l3, error:e3 } = useMeRevenueByCategory(THIS_YEAR);
+  const { selectedYear } = useFilter();
+
+  const { data:kpiData,     loading:l1, error:e1 } = useMeRevenueKpis(selectedYear);
+  const { data:monthlyData, loading:l2, error:e2 } = useMeRevenueMonthly(selectedYear);
+  const { data:catData,     loading:l3, error:e3 } = useMeRevenueByCategory(selectedYear);
   const { data:salesData,   loading:l4, error:e4 } = useMeRecentSales(10);
 
   const monthlyTotals = useMemo(() => {

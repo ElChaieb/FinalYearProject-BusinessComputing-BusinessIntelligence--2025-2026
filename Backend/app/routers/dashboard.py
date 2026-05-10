@@ -490,6 +490,15 @@ def _funnel_by_user(year_n: int, extra_where: str = "", params: tuple = ()):
     Per-user yearly totals for the donut cards (Opportunities / Quotes by user).
     Returns two lists: current year and previous year.
     """
+    # Prefix unaliased column names with the correct table alias per query
+    def _prefix(w, alias):
+        return (w.replace("agency_name", f"{alias}.agency_name")
+                 .replace("user_id",     f"{alias}.user_id")
+                 .replace(f"{alias}.{alias}.", f"{alias}."))  # prevent double-prefix
+
+    fo_where = _prefix(extra_where, "fo")
+    fq_where = _prefix(extra_where, "fq")
+
     sql_tmpl = f"""
         SELECT
             du.user_id,
@@ -499,7 +508,7 @@ def _funnel_by_user(year_n: int, extra_where: str = "", params: tuple = ()):
         FROM fact_opportunities fo
         JOIN dim_user du ON du.user_id = fo.user_id
         WHERE EXTRACT(YEAR FROM fo.created_date) = %s
-          {extra_where}
+          {fo_where}
         GROUP BY du.user_id, full_name
         ORDER BY full_name
     """
@@ -514,7 +523,7 @@ def _funnel_by_user(year_n: int, extra_where: str = "", params: tuple = ()):
             FROM fact_quotes fq
             JOIN dim_user du ON du.user_id = fq.user_id
             WHERE EXTRACT(YEAR FROM fq.created_date) = %s
-              {extra_where.replace('fo.', 'fq.')}
+              {fq_where}
             GROUP BY du.user_id, full_name
             ORDER BY full_name
         """

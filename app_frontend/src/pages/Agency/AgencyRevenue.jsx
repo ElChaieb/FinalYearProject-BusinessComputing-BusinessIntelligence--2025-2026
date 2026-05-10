@@ -10,6 +10,7 @@
 import { useState, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { FilterProvider, FilterBar } from "../../components/AgencyFilterContext";
+import { useFilter } from "../../components/AgencyFilterContext";
 import Layout from "../../components/Layout";
 import {
   useAgencyRevenueMonthly,
@@ -148,9 +149,11 @@ function RevenueInner() {
   const [expandedCats,setExpandedCats] = useState([]);
   const toggleCat = (id) => setExpandedCats((prev)=>prev.includes(id)?prev.filter((x)=>x!==id):[...prev,id]);
 
-  const {data:monthlyData,  loading:l1, error:e1} = useAgencyRevenueMonthly(THIS_YEAR);
-  const {data:categoryData, loading:l2, error:e2} = useAgencyRevenueByCategory(THIS_YEAR);
-  const {data:commData,     loading:l3, error:e3} = useAgencyRevenueByCommercial(THIS_YEAR);
+  const { selectedYear } = useFilter();
+
+  const {data:monthlyData,  loading:l1, error:e1} = useAgencyRevenueMonthly(selectedYear);
+  const {data:categoryData, loading:l2, error:e2} = useAgencyRevenueByCategory(selectedYear);
+  const {data:commData,     loading:l3, error:e3} = useAgencyRevenueByCommercial(selectedYear);
 
   const monthlyTotals = useMemo(()=>{
     const rows=monthlyData?.rows??[];

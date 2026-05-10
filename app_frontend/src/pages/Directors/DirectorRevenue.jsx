@@ -14,6 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
+import { useFilter } from "../../components/FilterContext"; // year filter
 import { FilterProvider, FilterBar } from "../../components/FilterContext";
 import Layout from "../../components/Layout";
 import {
@@ -248,9 +249,11 @@ function RevenueInner() {
   const [expandedCats, setExpandedCats] = useState([]);
   const toggleCat = (id) => setExpandedCats((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
-  const { data: monthlyData,   loading: l1, error: e1 } = useGlobalRevenueMonthly(THIS_YEAR);
-  const { data: categoryData,  loading: l2, error: e2 } = useGlobalRevenueByCategory(THIS_YEAR);
-  const { data: agencyRevData, loading: l3, error: e3 } = useGlobalRevenueByAgency(THIS_YEAR);
+  const { selectedYear } = useFilter();
+
+  const { data: monthlyData,   loading: l1, error: e1 } = useGlobalRevenueMonthly(selectedYear);
+  const { data: categoryData,  loading: l2, error: e2 } = useGlobalRevenueByCategory(selectedYear);
+  const { data: agencyRevData, loading: l3, error: e3 } = useGlobalRevenueByAgency(selectedYear);
 
   const monthlyTotals = useMemo(() => {
     const rows = monthlyData?.rows ?? [];

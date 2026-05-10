@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { FilterProvider, FilterBar } from "../../components/FilterContext_states";
+import { FilterProvider, FilterBar, useFilter } from "../../components/FilterContext_states";
 import Layout from "../../components/Layout";
 import {
   useGlobalTrendsByCategory,
@@ -245,9 +245,11 @@ function TrendsPage() {
   const [expandedCats, setExpandedCats] = useState([]);
   const toggleCat = (id) => setExpandedCats((prev) => prev.includes(id) ? prev.filter((x) => x!==id) : [...prev,id]);
 
-  const { data: catData,           loading:l1, error:e1 } = useGlobalTrendsByCategory(THIS_YEAR);
-  const { data: stateCurData,      loading:l2, error:e2 } = useGlobalTrendsClientsByState(THIS_YEAR, CUR_MONTH_IDX+1);
-  const { data: statePrevData,     loading:l3, error:e3 } = useGlobalTrendsClientsByState(THIS_YEAR, PREV_MONTH_IDX+1);
+  const { selectedYear } = useFilter();
+
+  const { data: catData,           loading:l1, error:e1 } = useGlobalTrendsByCategory(selectedYear);
+  const { data: stateCurData,      loading:l2, error:e2 } = useGlobalTrendsClientsByState(selectedYear, CUR_MONTH_IDX+1);
+  const { data: statePrevData,     loading:l3, error:e3 } = useGlobalTrendsClientsByState(selectedYear, PREV_MONTH_IDX+1);
 
   const categories = useMemo(() => buildCategories(catData?.rows ?? [], false), [catData]);
   const catTotals  = useMemo(() => categories.map((cat) => ({

@@ -12,6 +12,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
   PieChart, Pie, Cell,
 } from "recharts";
+import { useFilter } from "../../components/FilterContext"; // year filter
 import { FilterProvider, FilterBar } from "../../components/FilterContext";
 import Layout from "../../components/Layout";
 import {
@@ -140,8 +141,10 @@ const DonutCard = ({ title, agencies, valueKey }) => {
 };
 
 function FunnelPageInner() {
-  const { data: funnelMonthly, loading: l1, error: e1 } = useGlobalFunnelMonthly(THIS_YEAR);
-  const { data: funnelAgency,  loading: l2, error: e2 } = useGlobalFunnelByAgency(THIS_YEAR);
+  const { selectedYear } = useFilter();
+
+  const { data: funnelMonthly, loading: l1, error: e1 } = useGlobalFunnelMonthly(selectedYear);
+  const { data: funnelAgency,  loading: l2, error: e2 } = useGlobalFunnelByAgency(selectedYear);
 
   const data = useMemo(() => buildFunnelData(funnelMonthly?.rows ?? []), [funnelMonthly]);
   const { yearN: agenciesN, yearNm1: agenciesNm1 } = useMemo(() => buildFunnelByEntity(funnelAgency ?? {}), [funnelAgency]);

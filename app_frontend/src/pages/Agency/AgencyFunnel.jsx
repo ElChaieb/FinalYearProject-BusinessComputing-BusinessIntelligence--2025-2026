@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { FunnelChart, Funnel, LabelList, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, PieChart, Pie, Cell } from "recharts";
 import { FilterProvider, FilterBar } from "../../components/AgencyFilterContext";
+import { useFilter } from "../../components/AgencyFilterContext";
 import Layout from "../../components/Layout";
 import { useAgencyFunnelMonthly, useAgencyFunnelByCommercial, buildFunnelData, buildFunnelByEntity } from "../../hooks/dashboardHooks";
 
@@ -86,8 +87,10 @@ const DonutCard = ({title,commercials,valueKey}) => {
 };
 
 function FunnelPageInner() {
-  const {data:funnelMonthly, loading:l1, error:e1} = useAgencyFunnelMonthly(THIS_YEAR);
-  const {data:funnelComm,    loading:l2, error:e2} = useAgencyFunnelByCommercial(THIS_YEAR);
+  const { selectedYear } = useFilter();
+
+  const {data:funnelMonthly, loading:l1, error:e1} = useAgencyFunnelMonthly(selectedYear);
+  const {data:funnelComm,    loading:l2, error:e2} = useAgencyFunnelByCommercial(selectedYear);
 
   const data = useMemo(()=>buildFunnelData(funnelMonthly?.rows??[]),[funnelMonthly]);
   const {yearN:commsN, yearNm1:commsNm1} = useMemo(()=>buildFunnelByEntity(funnelComm??{}),[funnelComm]);
