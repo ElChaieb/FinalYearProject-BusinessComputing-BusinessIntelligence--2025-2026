@@ -40,7 +40,7 @@ TUNISIA_STATES = [
     "Tataouine", "Gafsa", "Tozeur", "Kebili",
 ]
 
-GLOBAL_ROLES = {"Directeur Général", "Directeur Commercial", "Administrateur BI"}
+GLOBAL_ROLES = {"General Director", "Commercial Director", "Administrateur BI"}
 
 
 # ── DWH connection ─────────────────────────────────────────────────────────────
@@ -70,983 +70,711 @@ def _one(sql: str, params: tuple = ()) -> dict:
     return rows[0] if rows else {}
 
 
-# ── Shared helpers ─────────────────────────────────────────────────────────────
+# ── Auth helpers ───────────────────────────────────────────────────────────────
 
-def date_range_params(
-    from_date: Optional[date] = Query(None, alias="from"),
-    to_date:   Optional[date] = Query(None, alias="to"),
-):
-    if not from_date:
-        today = date.today()
-        from_date = date(today.year, today.month, 1)
-    if not to_date:
-        to_date = date.today()
-    return {"from_date": from_date, "to_date": to_date}
+def _require_global(user):
+    if user.role not in GLOBAL_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
 
 
-def _get_dwh_user_id(email: str) -> int:
-    """Resolve dim_user.user_id by email. Raises 404 if not found."""
-    row = _one("SELECT user_id FROM dim_user WHERE email = %s LIMIT 1", (email,))
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found in DWH")
-    return row["user_id"]
+def _get_dwh_user_id(email: str) -> Optional[int]:
+    row = _one("SELECT user_id FROM dim_user WHERE email = %s", (email,))
+    return row.get("user_id")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# GLOBAL  /dashboard/global/*
-# Access: Directeur Général, Directeur Commercial, Administrateur BI
+#  SECTION 1 — REVENUE
+#  Shared shape used by Director, Agency, and Commercial revenue dashboards.
+#
+#  Revenue endpoints return:
+#    • /revenue/monthly  → monthly n vs n-1 totals (bar chart + KPI cards)
+#    • /revenue/by-category → category × model × month matrix (breakdown table)
+#    • /revenue/by-agency   → per-agency monthly totals (donut row) [global only]
+#    • /revenue/by-commercial → per-user monthly totals (donut row) [agency + global]
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ── Section 1 — Revenue KPI cards ─────────────────────────────────────────────
+# ── Shared revenue SQL helpers ─────────────────────────────────────────────────
 
-@router.get("/global/section1/kpis")
-def global_section1_kpis(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
+_REV_WHERE_GLOBAL = ""
+_REV_WHERE_AGENCY = "AND fs.agency_name = %s"
+_REV_WHERE_USER   = "AND fs.user_id = %s"
+
+def _monthly_revenue(year_n: int, extra_where: str = "", params: tuple = ()):
     """
-    Returns:
-      total_revenue, avg_sale_value, highest_sale_value, lowest_sale_value,
-      sales_count — all from fact_sales in the date range.
+    Returns 12 rows: month 1-12, revenue for year_n and year_n-1.
     """
-    r = _one("""
+    sql = f"""
         SELECT
-            COALESCE(SUM(fs.final_price),  0)   AS total_revenue,
-            COALESCE(AVG(fs.final_price),  0)   AS avg_sale_value,
-            COALESCE(MAX(fs.final_price),  0)   AS highest_sale_value,
-            COALESCE(MIN(fs.final_price),  0)   AS lowest_sale_value,
-            COUNT(*)                             AS sales_count
+            EXTRACT(MONTH FROM fs.sale_date)::INT AS month,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s
+                     THEN fs.final_price ELSE 0 END)  AS n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s - 1
+                     THEN fs.final_price ELSE 0 END)  AS n_minus1
         FROM fact_sales fs
-        WHERE fs.sale_date BETWEEN %s AND %s
-    """, (dr["from_date"], dr["to_date"]))
-
-    return {
-        "total_revenue":      float(r.get("total_revenue")      or 0),
-        "avg_sale_value":     float(r.get("avg_sale_value")      or 0),
-        "highest_sale_value": float(r.get("highest_sale_value")  or 0),
-        "lowest_sale_value":  float(r.get("lowest_sale_value")   or 0),
-        "sales_count":        int(r.get("sales_count")           or 0),
-    }
-
-
-@router.get("/global/section1/revenue-by-month")
-def global_revenue_by_month(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
+        WHERE EXTRACT(YEAR FROM fs.sale_date) IN (%s, %s - 1)
+          {extra_where}
+        GROUP BY month
+        ORDER BY month
     """
-    Multi-agency monthly revenue line chart.
-    Returns list of { date: 'Jan 25', <agency_name>: revenue, ... }
-    One object per (year, month), columns are distinct agency names.
+    return _query(sql, (year_n, year_n, year_n, year_n) + params)
+
+
+def _category_model_revenue(year_n: int, extra_where: str = "", params: tuple = ()):
     """
-    rows = _query("""
-        SELECT
-            TO_CHAR(DATE_TRUNC('month', fs.sale_date), 'Mon YY') AS date,
-            EXTRACT(YEAR  FROM fs.sale_date)::int                AS year,
-            EXTRACT(MONTH FROM fs.sale_date)::int                AS month,
-            fs.agency_name,
-            COALESCE(SUM(fs.final_price), 0)                     AS revenue
-        FROM fact_sales fs
-        WHERE fs.sale_date BETWEEN %s AND %s
-          AND fs.agency_name IS NOT NULL
-        GROUP BY DATE_TRUNC('month', fs.sale_date),
-                 EXTRACT(YEAR  FROM fs.sale_date),
-                 EXTRACT(MONTH FROM fs.sale_date),
-                 fs.agency_name
-        ORDER BY year, month
-    """, (dr["from_date"], dr["to_date"]))
-
-    # Pivot: { date -> { agency -> revenue } }
-    pivot: dict = {}
-    for r in rows:
-        key = r["date"]
-        if key not in pivot:
-            pivot[key] = {"date": key, "_year": r["year"], "_month": r["month"]}
-        pivot[key][r["agency_name"]] = float(r["revenue"])
-
-    return sorted(pivot.values(), key=lambda x: (x["_year"], x["_month"]))
-
-
-@router.get("/global/section1/agency-summary")
-def global_agency_revenue_summary(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
+    Returns rows: category, model, month, n, n_minus1.
+    Frontend pivots this into the breakdown table.
     """
-    One row per agency: total revenue + % change vs previous equal-length period.
-    Returns list of { agency, total, totalFmt, change, changeType }
-    """
-    period_days = (dr["to_date"] - dr["from_date"]).days + 1
-    from datetime import timedelta
-    prev_from = dr["from_date"] - timedelta(days=period_days)
-    prev_to   = dr["from_date"] - timedelta(days=1)
-
-    # One query covers both periods using conditional aggregation — half the round-trips.
-    combined = _query("""
-        SELECT
-            agency_name,
-            COALESCE(SUM(CASE WHEN sale_date BETWEEN %s AND %s THEN final_price END), 0) AS current_revenue,
-            COALESCE(SUM(CASE WHEN sale_date BETWEEN %s AND %s THEN final_price END), 0) AS prev_revenue
-        FROM fact_sales
-        WHERE sale_date BETWEEN %s AND %s
-          AND agency_name IS NOT NULL
-        GROUP BY agency_name
-        ORDER BY current_revenue DESC
-    """, (
-        dr["from_date"], dr["to_date"],
-        prev_from, prev_to,
-        prev_from, dr["to_date"],   # full span covers both periods in one scan
-    ))
-
-    # Reshape to match the original variable names the loop below expects
-    current  = [{"agency_name": r["agency_name"], "revenue": r["current_revenue"]} for r in combined]
-    prev_map = {r["agency_name"]: float(r["prev_revenue"]) for r in combined}
-
-    STROKES = ["#3b82f6", "#06b6d4", "#8b5cf6", "#f59e0b", "#ec4899",
-               "#10b981", "#ef4444", "#a78bfa", "#f97316", "#14b8a6"]
-
-    result = []
-    for i, r in enumerate(current):
-        total   = float(r["revenue"])
-        prev_v  = prev_map.get(r["agency_name"], 0)
-        if prev_v > 0:
-            pct  = round((total - prev_v) / prev_v * 100, 1)
-            change      = f"+{pct}%" if pct >= 0 else f"{pct}%"
-            change_type = "positive" if pct >= 0 else "negative"
-        else:
-            change      = "—"
-            change_type = "positive"
-        result.append({
-            "agency":      r["agency_name"],
-            "total":       total,
-            "totalFmt":    f"{round(total/1000)}K TND" if total < 1_000_000 else f"{round(total/1_000_000, 2)}M TND",
-            "change":      change,
-            "changeType":  change_type,
-            "stroke":      STROKES[i % len(STROKES)],
-        })
-    return result
-
-
-# ── Section 2 — Conversion Funnel ─────────────────────────────────────────────
-
-@router.get("/global/section2/kpis")
-def global_section2_kpis(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """Total opportunities, quotes, sales in period."""
-    r = _one("""
-        SELECT
-            (SELECT COUNT(*) FROM fact_opportunities
-             WHERE created_date BETWEEN %s AND %s) AS total_opportunities,
-            (SELECT COUNT(*) FROM fact_quotes
-             WHERE created_date BETWEEN %s AND %s) AS total_quotes,
-            (SELECT COUNT(*) FROM fact_sales
-             WHERE sale_date BETWEEN %s AND %s)    AS total_sales
-    """, (dr["from_date"], dr["to_date"]) * 3)
-
-    return {
-        "total_opportunities": int(r.get("total_opportunities") or 0),
-        "total_quotes":        int(r.get("total_quotes")        or 0),
-        "total_sales":         int(r.get("total_sales")         or 0),
-    }
-
-
-@router.get("/global/section2/funnel-by-month")
-def global_funnel_by_month(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """
-    Monthly stacked bar: Opportunities, Quotes, Sales per month.
-    Returns list of { date, Opportunities, Quotes, Sales }
-    """
-    rows = _query("""
-        WITH months AS (
-            SELECT DISTINCT
-                DATE_TRUNC('month', d)::date AS month_start
-            FROM generate_series(%s::date, %s::date, '1 month'::interval) d
-        ),
-        oppos AS (
-            SELECT DATE_TRUNC('month', created_date)::date AS m,
-                   COUNT(*) AS cnt
-            FROM fact_opportunities
-            WHERE created_date BETWEEN %s AND %s
-            GROUP BY 1
-        ),
-        quotes AS (
-            SELECT DATE_TRUNC('month', created_date)::date AS m,
-                   COUNT(*) AS cnt
-            FROM fact_quotes
-            WHERE created_date BETWEEN %s AND %s
-            GROUP BY 1
-        ),
-        sales AS (
-            SELECT DATE_TRUNC('month', sale_date)::date AS m,
-                   COUNT(*) AS cnt
-            FROM fact_sales
-            WHERE sale_date BETWEEN %s AND %s
-            GROUP BY 1
-        )
-        SELECT
-            TO_CHAR(mo.month_start, 'Mon YY')     AS date,
-            EXTRACT(YEAR  FROM mo.month_start)::int AS year,
-            EXTRACT(MONTH FROM mo.month_start)::int AS month,
-            COALESCE(o.cnt, 0)                     AS "Opportunities",
-            COALESCE(q.cnt, 0)                     AS "Quotes",
-            COALESCE(s.cnt, 0)                     AS "Sales"
-        FROM months mo
-        LEFT JOIN oppos  o ON o.m = mo.month_start
-        LEFT JOIN quotes q ON q.m = mo.month_start
-        LEFT JOIN sales  s ON s.m = mo.month_start
-        ORDER BY mo.month_start
-    """, (
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
-    ))
-
-    return [{
-        "date":          r["date"],
-        "Opportunities": int(r["Opportunities"]),
-        "Quotes":        int(r["Quotes"]),
-        "Sales":         int(r["Sales"]),
-    } for r in rows]
-
-
-@router.get("/global/section2/agency-funnel")
-def global_agency_funnel(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """
-    Per-agency funnel totals + conversion rates.
-    Returns list of { agency, opportunities, quotes, sales, convOQ, convQS }
-    """
-    rows = _query("""
-        WITH oppos AS (
-            SELECT agency_name, COUNT(*) AS cnt
-            FROM fact_opportunities
-            WHERE created_date BETWEEN %s AND %s
-            GROUP BY agency_name
-        ),
-        quotes AS (
-            SELECT agency_name, COUNT(*) AS cnt
-            FROM fact_quotes
-            WHERE created_date BETWEEN %s AND %s
-            GROUP BY agency_name
-        ),
-        sales AS (
-            SELECT agency_name, COUNT(*) AS cnt
-            FROM fact_sales
-            WHERE sale_date BETWEEN %s AND %s
-            GROUP BY agency_name
-        ),
-        agencies AS (
-            SELECT agency_name FROM oppos
-            UNION
-            SELECT agency_name FROM quotes
-            UNION
-            SELECT agency_name FROM sales
-        )
-        SELECT
-            ag.agency_name                         AS agency,
-            COALESCE(o.cnt, 0)                     AS opportunities,
-            COALESCE(q.cnt, 0)                     AS quotes,
-            COALESCE(s.cnt, 0)                     AS sales
-        FROM agencies ag
-        LEFT JOIN oppos  o ON o.agency_name = ag.agency_name
-        LEFT JOIN quotes q ON q.agency_name = ag.agency_name
-        LEFT JOIN sales  s ON s.agency_name = ag.agency_name
-        WHERE ag.agency_name IS NOT NULL
-        ORDER BY sales DESC
-    """, (
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
-        dr["from_date"], dr["to_date"],
-    ))
-
-    result = []
-    for r in rows:
-        oppos  = int(r["opportunities"])
-        quotes = int(r["quotes"])
-        sales  = int(r["sales"])
-        conv_oq = f"{round(quotes / oppos * 100, 1)}%" if oppos  else "0%"
-        conv_qs = f"{round(sales  / quotes * 100, 1)}%" if quotes else "0%"
-        result.append({
-            "agency":        r["agency"],
-            "opportunities": oppos,
-            "quotes":        quotes,
-            "sales":         sales,
-            "convOQ":        conv_oq,
-            "convQS":        conv_qs,
-        })
-    return result
-
-
-# ── Section 3 — Vehicle Trends ─────────────────────────────────────────────────
-
-@router.get("/global/section3/kpis")
-def global_section3_kpis(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """
-    Most sold category, least sold category, avg category sales.
-    """
-    rows = _query("""
+    sql = f"""
         SELECT
             dv.category,
-            COUNT(*)  AS sales_count
+            dv.model,
+            EXTRACT(MONTH FROM fs.sale_date)::INT AS month,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s
+                     THEN fs.final_price ELSE 0 END) AS n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s - 1
+                     THEN fs.final_price ELSE 0 END) AS n_minus1
         FROM fact_sales fs
         JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
-        WHERE fs.sale_date BETWEEN %s AND %s
-          AND dv.category IS NOT NULL
-        GROUP BY dv.category
-        ORDER BY sales_count DESC
-    """, (dr["from_date"], dr["to_date"]))
-
-    if not rows:
-        return {
-            "most_sold_category":  None,
-            "most_sold_count":     0,
-            "least_sold_category": None,
-            "least_sold_count":    0,
-            "avg_category_sales":  0,
-        }
-
-    counts = [int(r["sales_count"]) for r in rows]
-    avg    = round(sum(counts) / len(counts), 1)
-
-    return {
-        "most_sold_category":  rows[0]["category"],
-        "most_sold_count":     counts[0],
-        "least_sold_category": rows[-1]["category"],
-        "least_sold_count":    counts[-1],
-        "avg_category_sales":  avg,
-    }
-
-
-@router.get("/global/section3/categories")
-def global_categories(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """Sales count per vehicle category (for donut chart)."""
-    rows = _query("""
-        SELECT dv.category, COUNT(*) AS sales
-        FROM fact_sales fs
-        JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
-        WHERE fs.sale_date BETWEEN %s AND %s
-          AND dv.category IS NOT NULL
-        GROUP BY dv.category
-        ORDER BY sales DESC
-    """, (dr["from_date"], dr["to_date"]))
-
-    return [{"category": r["category"], "sales": int(r["sales"])} for r in rows]
-
-
-@router.get("/global/section3/brands")
-def global_brands(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """Top brands by sales count (for mini bar chart)."""
-    rows = _query("""
-        SELECT dv.brand, COUNT(*) AS sales
-        FROM fact_sales fs
-        JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
-        WHERE fs.sale_date BETWEEN %s AND %s
-          AND dv.brand IS NOT NULL
-        GROUP BY dv.brand
-        ORDER BY sales DESC
-        LIMIT 10
-    """, (dr["from_date"], dr["to_date"]))
-
-    return [{"brand": r["brand"], "sales": int(r["sales"])} for r in rows]
-
-
-@router.get("/global/section3/agency-vehicles")
-def global_agency_vehicles(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
+        WHERE EXTRACT(YEAR FROM fs.sale_date) IN (%s, %s - 1)
+          {extra_where}
+        GROUP BY dv.category, dv.model, month
+        ORDER BY dv.category, dv.model, month
     """
-    Per-agency: total units sold, top category, top brand.
-    Used for agency comparison bar + summary badges.
-    """
-    rows = _query("""
-        WITH base AS (
-            SELECT
-                fs.agency_name,
-                dv.category,
-                dv.brand,
-                COUNT(*) AS cnt
-            FROM fact_sales fs
-            JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
-            WHERE fs.sale_date BETWEEN %s AND %s
-              AND fs.agency_name IS NOT NULL
-            GROUP BY fs.agency_name, dv.category, dv.brand
-        ),
-        ranked AS (
-            SELECT
-                agency_name,
-                category,
-                brand,
-                cnt,
-                SUM(cnt)  OVER (PARTITION BY agency_name)                    AS total_sales,
-                ROW_NUMBER() OVER (PARTITION BY agency_name ORDER BY cnt DESC) AS rn
-            FROM base
-        )
-        SELECT
-            agency_name  AS agency,
-            total_sales,
-            category     AS top_category,
-            brand        AS top_brand
-        FROM ranked
-        WHERE rn = 1
-        ORDER BY total_sales DESC
-    """, (dr["from_date"], dr["to_date"]))
-
-    return [{
-        "agency":       r["agency"],
-        "totalSales":   int(r["total_sales"]),
-        "topCategory":  r["top_category"],
-        "topBrand":     r["top_brand"],
-    } for r in rows]
+    return _query(sql, (year_n, year_n, year_n, year_n) + params)
 
 
-# ── Section 4 — Customer Segmentation ─────────────────────────────────────────
+# ── /dashboard/global/revenue/* ───────────────────────────────────────────────
 
-@router.get("/global/section4/kpis")
-def global_section4_kpis(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """
-    Highest client base state, least client base state, total distinct clients
-    — restricted to Tunisia's 24 governorates, counted from fact_sales.
-    """
-    states_placeholder = ",".join(["%s"] * len(TUNISIA_STATES))
-
-    rows = _query(f"""
-        SELECT
-            dc.city,
-            COUNT(DISTINCT fs.client_id) AS client_count
-        FROM fact_sales fs
-        JOIN dim_client dc ON dc.client_id = fs.client_id
-        WHERE fs.sale_date BETWEEN %s AND %s
-          AND dc.city IN ({states_placeholder})
-        GROUP BY dc.city
-        ORDER BY client_count DESC
-    """, (dr["from_date"], dr["to_date"], *TUNISIA_STATES))
-
-    if not rows:
-        return {
-            "highest_state": None, "highest_count": 0,
-            "lowest_state":  None, "lowest_count":  0,
-            "total_clients": 0,
-        }
-
-    counts = [int(r["client_count"]) for r in rows]
-    return {
-        "highest_state": rows[0]["city"],
-        "highest_count": counts[0],
-        "lowest_state":  rows[-1]["city"],
-        "lowest_count":  counts[-1],
-        "total_clients": sum(counts),
-    }
-
-
-@router.get("/global/section4/clients-by-state")
-def global_clients_by_state(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """
-    Client counts per Tunisian governorate.
-    - clients    = distinct clients with any sale in the period
-    - newClients = clients whose first-ever sale in the entire DWH falls in this period
-    """
-    states_placeholder = ",".join(["%s"] * len(TUNISIA_STATES))
-
-    rows = _query(f"""
-        WITH period_clients AS (
-            SELECT DISTINCT fs.client_id, dc.city
-            FROM fact_sales fs
-            JOIN dim_client dc ON dc.client_id = fs.client_id
-            WHERE fs.sale_date BETWEEN %s AND %s
-              AND dc.city IN ({states_placeholder})
-        ),
-        first_sale AS (
-            -- Only compute first-sale date for clients who appear in the period,
-            -- not the entire fact_sales table.
-            SELECT fs.client_id, MIN(fs.sale_date) AS first_date
-            FROM fact_sales fs
-            WHERE fs.client_id IN (SELECT client_id FROM period_clients)
-            GROUP BY fs.client_id
-        )
-        SELECT
-            pc.city,
-            COUNT(DISTINCT pc.client_id)                                          AS clients,
-            COUNT(DISTINCT CASE
-                WHEN fst.first_date BETWEEN %s AND %s THEN pc.client_id
-            END)                                                                  AS new_clients
-        FROM period_clients pc
-        JOIN first_sale fst ON fst.client_id = pc.client_id
-        GROUP BY pc.city
-        ORDER BY clients DESC
-    """, (
-        dr["from_date"], dr["to_date"],
-        *TUNISIA_STATES,
-        dr["from_date"], dr["to_date"],
-    ))
-
-    return [{
-        "city":       r["city"],
-        "clients":    int(r["clients"]),
-        "newClients": int(r["new_clients"]),
-    } for r in rows]
-
-
-@router.get("/global/section4/agency-clients")
-def global_agency_clients(
-    dr=Depends(date_range_params),
-    _user=Depends(get_current_user),
-):
-    """
-    Per-agency client stats: totalClients, newClients, repeatRate.
-    Clients scoped to Tunisia's 24 governorates.
-    Repeat client = bought in this period AND had a previous sale before the period.
-    """
-    states_placeholder = ",".join(["%s"] * len(TUNISIA_STATES))
-
-    rows = _query(f"""
-        WITH period_clients AS (
-            SELECT DISTINCT fs.client_id, fs.agency_name
-            FROM fact_sales fs
-            JOIN dim_client dc ON dc.client_id = fs.client_id
-            WHERE fs.sale_date BETWEEN %s AND %s
-              AND dc.city IN ({states_placeholder})
-              AND fs.agency_name IS NOT NULL
-        ),
-        first_sale AS (
-            -- Scoped to only clients who appear in the period — avoids full table scan.
-            SELECT fs.client_id, MIN(fs.sale_date) AS first_date
-            FROM fact_sales fs
-            WHERE fs.client_id IN (SELECT client_id FROM period_clients)
-            GROUP BY fs.client_id
-        )
-        SELECT
-            pc.agency_name                                                   AS agency,
-            COUNT(DISTINCT pc.client_id)                                     AS total_clients,
-            COUNT(DISTINCT CASE
-                WHEN fst.first_date BETWEEN %s AND %s THEN pc.client_id
-            END)                                                             AS new_clients,
-            COUNT(DISTINCT CASE
-                WHEN fst.first_date < %s THEN pc.client_id
-            END)                                                             AS repeat_clients
-        FROM period_clients pc
-        JOIN first_sale fst ON fst.client_id = pc.client_id
-        GROUP BY pc.agency_name
-        ORDER BY total_clients DESC
-    """, (
-        dr["from_date"], dr["to_date"],
-        *TUNISIA_STATES,
-        dr["from_date"], dr["to_date"],
-        dr["from_date"],
-    ))
-
-    result = []
-    for r in rows:
-        total   = int(r["total_clients"])
-        repeat  = int(r["repeat_clients"])
-        rate    = f"{round(repeat / total * 100, 1)}%" if total else "0%"
-        result.append({
-            "agency":       r["agency"],
-            "totalClients": total,
-            "newClients":   int(r["new_clients"]),
-            "repeatRate":   rate,
-        })
-    return result
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# AGENCY  /dashboard/agency/*
-# Access: Responsable d'Agence — scoped to user.agency_name
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/agency/kpis")
-def agency_kpis(
-    dr=Depends(date_range_params),
+@router.get("/global/revenue/monthly")
+def global_revenue_monthly(
+    year: int = Query(default=None),
     user=Depends(get_current_user),
-    agency_override: Optional[str] = Query(None, alias="agency"),
 ):
-    """
-    Agency-level KPIs: total sales, revenue, opp→quote rate, quote→sale rate.
-    Global roles (DG, DC, Admin) may pass ?agency=<name> to drill into any agency.
-    Agency managers are always scoped to their own agency.
-    """
-
-    agency = (
-        agency_override
-        if agency_override and user.role in GLOBAL_ROLES
-        else user.agency_name
-    )
-    r = _one("""
-        WITH o AS (
-            SELECT COUNT(*) AS cnt
-            FROM fact_opportunities
-            WHERE agency_name = %s AND created_date BETWEEN %s AND %s
-        ),
-        q AS (
-            SELECT COUNT(*) AS cnt
-            FROM fact_quotes
-            WHERE agency_name = %s AND created_date BETWEEN %s AND %s
-        ),
-        s AS (
-            SELECT COUNT(*) AS cnt, COALESCE(SUM(final_price), 0) AS rev
-            FROM fact_sales
-            WHERE agency_name = %s AND sale_date BETWEEN %s AND %s
-        )
-        SELECT o.cnt AS opportunities, q.cnt AS quotes, s.cnt AS sales, s.rev AS revenue
-        FROM o, q, s
-    """, (
-        agency, dr["from_date"], dr["to_date"],
-        agency, dr["from_date"], dr["to_date"],
-        agency, dr["from_date"], dr["to_date"],
-    ))
-
-    oppos  = int(r.get("opportunities") or 0)
-    quotes = int(r.get("quotes")        or 0)
-    sales  = int(r.get("sales")         or 0)
-
-    return {
-        "sales":    sales,
-        "revenue":  float(r.get("revenue") or 0),
-        "opportunities": oppos,
-        "quotes":   quotes,
-        "convOQ":   f"{round(quotes / oppos  * 100, 1)}%" if oppos  else "0%",
-        "convQS":   f"{round(sales  / quotes * 100, 1)}%" if quotes else "0%",
-    }
+    _require_global(user)
+    year = year or date.today().year
+    rows = _monthly_revenue(year)
+    return {"year_n": year, "rows": rows}
 
 
-@router.get("/agency/revenue-by-month")
-def agency_revenue_by_month(
-    dr=Depends(date_range_params),
+@router.get("/global/revenue/by-category")
+def global_revenue_by_category(
+    year: int = Query(default=None),
     user=Depends(get_current_user),
-    agency_override: Optional[str] = Query(None, alias="agency"),
 ):
-    """Monthly revenue area chart for this agency."""
+    _require_global(user)
+    year = year or date.today().year
+    rows = _category_model_revenue(year)
+    return {"year_n": year, "rows": rows}
 
-    agency = (
-        agency_override
-        if agency_override and user.role in GLOBAL_ROLES
-        else user.agency_name
-    )
-    rows = _query("""
+
+@router.get("/global/revenue/by-agency")
+def global_revenue_by_agency(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    """Per-agency monthly revenue — used by the 4 donut cards in DirectorRevenue."""
+    _require_global(user)
+    year = year or date.today().year
+    sql = """
         SELECT
-            TO_CHAR(DATE_TRUNC('month', sale_date), 'Mon YY') AS date,
-            EXTRACT(YEAR  FROM sale_date)::int                AS year,
-            EXTRACT(MONTH FROM sale_date)::int                AS month,
-            COALESCE(SUM(final_price), 0)                     AS revenue
-        FROM fact_sales
-        WHERE agency_name = %s
-          AND sale_date BETWEEN %s AND %s
-        GROUP BY DATE_TRUNC('month', sale_date),
-                 EXTRACT(YEAR FROM sale_date),
-                 EXTRACT(MONTH FROM sale_date)
-        ORDER BY year, month
-    """, (agency, dr["from_date"], dr["to_date"]))
+            fs.agency_name,
+            EXTRACT(MONTH FROM fs.sale_date)::INT AS month,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s
+                     THEN fs.final_price ELSE 0 END) AS n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s - 1
+                     THEN fs.final_price ELSE 0 END) AS n_minus1
+        FROM fact_sales fs
+        WHERE EXTRACT(YEAR FROM fs.sale_date) IN (%s, %s - 1)
+        GROUP BY fs.agency_name, month
+        ORDER BY fs.agency_name, month
+    """
+    rows = _query(sql, (year, year, year, year))
+    return {"year_n": year, "rows": rows}
 
-    return [{"date": r["date"], "Revenue": float(r["revenue"])} for r in rows]
 
+# ── /dashboard/agency/revenue/* ───────────────────────────────────────────────
 
-@router.get("/agency/commercials")
-def agency_commercials(
-    dr=Depends(date_range_params),
+@router.get("/agency/revenue/monthly")
+def agency_revenue_monthly(
+    year: int = Query(default=None),
     user=Depends(get_current_user),
-    agency_override: Optional[str] = Query(None, alias="agency"),
 ):
-    """
-    All commercials in this agency with their KPIs.
-    Used for the commercial performance table + drill-down.
-    """
+    year = year or date.today().year
+    rows = _monthly_revenue(year, _REV_WHERE_AGENCY, (user.agency_name,))
+    return {"year_n": year, "agency": user.agency_name, "rows": rows}
 
-    agency = (
-        agency_override
-        if agency_override and user.role in GLOBAL_ROLES
-        else user.agency_name
-    )
-    from datetime import timedelta
-    period_days = (dr["to_date"] - dr["from_date"]).days + 1
-    prev_from = dr["from_date"] - timedelta(days=period_days)
-    prev_to   = dr["from_date"] - timedelta(days=1)
 
-    rows = _query("""
+@router.get("/agency/revenue/by-category")
+def agency_revenue_by_category(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    year = year or date.today().year
+    rows = _category_model_revenue(year, _REV_WHERE_AGENCY, (user.agency_name,))
+    return {"year_n": year, "agency": user.agency_name, "rows": rows}
+
+
+@router.get("/agency/revenue/by-commercial")
+def agency_revenue_by_commercial(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    """Per-commercial monthly revenue — used by the 4 donut cards in AgencyRevenue."""
+    year = year or date.today().year
+    sql = """
         SELECT
             du.user_id,
-            du.first_name || ' ' || du.last_name  AS name,
-            du.email,
-            COUNT(DISTINCT CASE WHEN fs.sale_date BETWEEN %s AND %s THEN fs.sale_id END)       AS sales,
-            COALESCE(SUM(CASE WHEN fs.sale_date BETWEEN %s AND %s THEN fs.final_price END), 0) AS revenue,
-            COALESCE(SUM(CASE WHEN fs.sale_date BETWEEN %s AND %s THEN fs.final_price END), 0) AS prev_revenue,
-            COUNT(DISTINCT fq.quote_id)            AS quotes
-        FROM dim_user du
-        LEFT JOIN fact_sales fs
-            ON fs.user_id = du.user_id
-            AND fs.sale_date BETWEEN %s AND %s
-        LEFT JOIN fact_quotes fq
-            ON fq.user_id = du.user_id
-            AND fq.created_date BETWEEN %s AND %s
-        WHERE du.agency_name = %s
-          AND du.role = 'Commercial'
-        GROUP BY du.user_id, du.first_name, du.last_name, du.email
-        ORDER BY sales DESC
-    """, (
-        dr["from_date"], dr["to_date"],          # sales COUNT filter
-        dr["from_date"], dr["to_date"],          # revenue SUM filter
-        prev_from, prev_to,                      # prev_revenue SUM filter
-        prev_from, dr["to_date"],                # full span for the JOIN
-        dr["from_date"], dr["to_date"],          # quotes date filter
-        agency,
-    ))
-
-    result = []
-    for r in rows:
-        sales  = int(r["sales"])
-        quotes = int(r["quotes"])
-        rev    = float(r["revenue"])
-        prev_v = float(r["prev_revenue"])
-
-        if prev_v > 0:
-            pct = round((rev - prev_v) / prev_v * 100, 1)
-            change      = f"+{pct}%" if pct >= 0 else f"{pct}%"
-            change_type = "positive" if pct >= 0 else "negative"
-        else:
-            change      = "—"
-            change_type = "positive"
-
-        conv_rate = f"{round(sales / quotes * 100, 1)}%" if quotes else "0%"
-
-        result.append({
-            "id":          r["user_id"],
-            "name":        r["name"],
-            "email":       r["email"],
-            "sales":       sales,
-            "revenue":     rev,
-            "revenueFmt":  f"{round(rev/1000)}K TND" if rev < 1_000_000 else f"{round(rev/1_000_000, 2)}M TND",
-            "quotes":      quotes,
-            "convRate":    conv_rate,
-            "change":      change,
-            "changeType":  change_type,
-        })
-    return result
-
-
-
-def _verify_commercial_access(commercial_id: int, user) -> None:
-    """Raise 403 if user cannot access this commercial's data.
-    Global roles (DG, DC, Admin) can drill into any commercial.
-    Agency managers are restricted to their own agency's team.
+            du.first_name || ' ' || du.last_name AS full_name,
+            EXTRACT(MONTH FROM fs.sale_date)::INT AS month,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s
+                     THEN fs.final_price ELSE 0 END) AS n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s - 1
+                     THEN fs.final_price ELSE 0 END) AS n_minus1
+        FROM fact_sales fs
+        JOIN dim_user du ON du.user_id = fs.user_id
+        WHERE EXTRACT(YEAR FROM fs.sale_date) IN (%s, %s - 1)
+          AND fs.agency_name = %s
+        GROUP BY du.user_id, full_name, month
+        ORDER BY full_name, month
     """
-    if user.role in GLOBAL_ROLES:
-        # Just verify the commercial exists
-        check = _one(
-            "SELECT user_id FROM dim_user WHERE user_id = %s AND role = 'Commercial'",
-            (commercial_id,),
-        )
-    else:
-        check = _one("""
-            SELECT user_id FROM dim_user
-            WHERE user_id = %s AND agency_name = %s AND role = 'Commercial'
-        """, (commercial_id, user.agency_name))
-    if not check:
-        raise HTTPException(status_code=403, detail="Commercial not accessible")
+    rows = _query(sql, (year, year, year, year, user.agency_name))
+    return {"year_n": year, "agency": user.agency_name, "rows": rows}
 
 
-@router.get("/agency/commercial/{commercial_id}/kpis")
-def agency_commercial_kpis(
-    commercial_id: int,
-    dr=Depends(date_range_params),
+# ── /dashboard/me/revenue/* ───────────────────────────────────────────────────
+
+@router.get("/me/revenue/monthly")
+def me_revenue_monthly(
+    year: int = Query(default=None),
     user=Depends(get_current_user),
 ):
-    """KPIs for a single commercial — agency manager or global role can drill in."""
-    _verify_commercial_access(commercial_id, user)
-    return _commercial_kpis_for(commercial_id, dr)
-
-
-@router.get("/agency/commercial/{commercial_id}/revenue-by-month")
-def agency_commercial_revenue(
-    commercial_id: int,
-    dr=Depends(date_range_params),
-    user=Depends(get_current_user),
-):
-    _verify_commercial_access(commercial_id, user)
-    return _commercial_revenue_for(commercial_id, dr)
-
-
-@router.get("/agency/commercial/{commercial_id}/top-vehicles")
-def agency_commercial_vehicles(
-    commercial_id: int,
-    dr=Depends(date_range_params),
-    user=Depends(get_current_user),
-):
-    _verify_commercial_access(commercial_id, user)
-    return _commercial_top_vehicles_for(commercial_id, dr)
-
-
-@router.get("/agency/commercial/{commercial_id}/recent-sales")
-def agency_commercial_recent_sales(
-    commercial_id: int,
-    limit: int = Query(10, ge=1, le=50),
-    dr=Depends(date_range_params),
-    user=Depends(get_current_user),
-):
-    _verify_commercial_access(commercial_id, user)
-    return _commercial_recent_sales_for(commercial_id, dr, limit)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# COMMERCIAL  /dashboard/me/*
-# Access: Commercial — scoped to logged-in user via dim_user email lookup
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/me/kpis")
-def me_kpis(
-    dr=Depends(date_range_params),
-    user=Depends(get_current_user),
-):
+    year = year or date.today().year
     uid = _get_dwh_user_id(user.email)
-    return _commercial_kpis_for(uid, dr)
+    if not uid:
+        raise HTTPException(status_code=404, detail="User not found in DWH")
+    rows = _monthly_revenue(year, _REV_WHERE_USER, (uid,))
+    return {"year_n": year, "rows": rows}
 
 
-@router.get("/me/revenue-by-month")
-def me_revenue_by_month(
-    dr=Depends(date_range_params),
+@router.get("/me/revenue/by-category")
+def me_revenue_by_category(
+    year: int = Query(default=None),
     user=Depends(get_current_user),
 ):
+    year = year or date.today().year
     uid = _get_dwh_user_id(user.email)
-    return _commercial_revenue_for(uid, dr)
+    if not uid:
+        raise HTTPException(status_code=404, detail="User not found in DWH")
+    rows = _category_model_revenue(year, _REV_WHERE_USER, (uid,))
+    return {"year_n": year, "rows": rows}
 
 
-@router.get("/me/top-vehicles")
-def me_top_vehicles(
-    dr=Depends(date_range_params),
+@router.get("/me/revenue/kpis")
+def me_revenue_kpis(
+    year: int = Query(default=None),
     user=Depends(get_current_user),
 ):
+    """
+    Returns the scalar KPIs for CommercialRevenue:
+      total, thisMonth, lastMonth (all for year_n and year_n-1).
+    Also returns deals count + win rate for the same scope.
+    """
+    year = year or date.today().year
+    today = date.today()
+    cur_month = today.month
+    prev_month = cur_month - 1 if cur_month > 1 else 12
+
     uid = _get_dwh_user_id(user.email)
-    return _commercial_top_vehicles_for(uid, dr)
+    if not uid:
+        raise HTTPException(status_code=404, detail="User not found in DWH")
 
+    rev = _one("""
+        SELECT
+            SUM(CASE WHEN EXTRACT(YEAR FROM sale_date) = %s
+                     THEN final_price ELSE 0 END)                        AS total_n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM sale_date) = %s - 1
+                     THEN final_price ELSE 0 END)                        AS total_nm1,
+            SUM(CASE WHEN EXTRACT(YEAR FROM sale_date) = %s
+                          AND EXTRACT(MONTH FROM sale_date) = %s
+                     THEN final_price ELSE 0 END)                        AS this_month_n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM sale_date) = %s - 1
+                          AND EXTRACT(MONTH FROM sale_date) = %s
+                     THEN final_price ELSE 0 END)                        AS this_month_nm1,
+            SUM(CASE WHEN EXTRACT(YEAR FROM sale_date) = %s
+                          AND EXTRACT(MONTH FROM sale_date) = %s
+                     THEN final_price ELSE 0 END)                        AS last_month_n
+        FROM fact_sales
+        WHERE user_id = %s
+    """, (year, year, year, cur_month, year, cur_month, year, prev_month, uid))
 
-@router.get("/me/recent-sales")
-def me_recent_sales(
-    limit: int = Query(10, ge=1, le=50),
-    dr=Depends(date_range_params),
-    user=Depends(get_current_user),
-):
-    uid = _get_dwh_user_id(user.email)
-    return _commercial_recent_sales_for(uid, dr, limit)
+    deals = _one("""
+        SELECT
+            COUNT(*)                                                      AS total,
+            COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM sale_date) = %s - 1) AS total_nm1,
+            COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM sale_date) = %s
+                                   AND EXTRACT(MONTH FROM sale_date) = %s) AS this_month
+        FROM fact_sales
+        WHERE user_id = %s
+    """, (year, year, cur_month, uid))
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Shared commercial helpers (used by both /agency/commercial/* and /me/*)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def _commercial_kpis_for(uid: int, dr: dict) -> dict:
-    r = _one("""
-        WITH o AS (
-            SELECT COUNT(*) AS cnt
-            FROM fact_opportunities
-            WHERE user_id = %s AND created_date BETWEEN %s AND %s
-        ),
-        q AS (
-            SELECT COUNT(*) AS cnt
-            FROM fact_quotes
-            WHERE user_id = %s AND created_date BETWEEN %s AND %s
-        ),
-        s AS (
-            SELECT COUNT(*) AS cnt, COALESCE(SUM(final_price), 0) AS rev
-            FROM fact_sales
-            WHERE user_id = %s AND sale_date BETWEEN %s AND %s
-        )
-        SELECT o.cnt AS opportunities, q.cnt AS quotes, s.cnt AS sales, s.rev AS revenue
-        FROM o, q, s
-    """, (
-        uid, dr["from_date"], dr["to_date"],
-        uid, dr["from_date"], dr["to_date"],
-        uid, dr["from_date"], dr["to_date"],
-    ))
-
-    oppos  = int(r.get("opportunities") or 0)
-    quotes = int(r.get("quotes")        or 0)
-    sales  = int(r.get("sales")         or 0)
-    rev    = float(r.get("revenue")     or 0)
+    # Quotes won vs lost to derive win rate
+    quote_counts = _one("""
+        SELECT
+            COUNT(*) FILTER (WHERE deleted IS NOT TRUE)  AS won,
+            COUNT(*) FILTER (WHERE deleted IS TRUE)      AS lost
+        FROM fact_quotes
+        WHERE user_id = %s
+          AND EXTRACT(YEAR FROM created_date) = %s
+    """, (uid, year))
 
     return {
-        "sales":         sales,
-        "revenue":       rev,
-        "opportunities": oppos,
-        "quotes":        quotes,
-        "convOQ":        f"{round(quotes / oppos  * 100, 1)}%" if oppos  else "0%",
-        "convQS":        f"{round(sales  / quotes * 100, 1)}%" if quotes else "0%",
+        "year_n": year,
+        "revenue": rev,
+        "deals": deals,
+        "quotes_won": quote_counts.get("won", 0),
+        "quotes_lost": quote_counts.get("lost", 0),
     }
 
 
-def _commercial_revenue_for(uid: int, dr: dict) -> list:
+@router.get("/me/revenue/recent-sales")
+def me_recent_sales(
+    limit: int = Query(default=10, le=50),
+    user=Depends(get_current_user),
+):
+    """Recent sales rows for the CommercialRevenue 'Recent Deals' table."""
+    uid = _get_dwh_user_id(user.email)
+    if not uid:
+        raise HTTPException(status_code=404, detail="User not found in DWH")
     rows = _query("""
         SELECT
-            TO_CHAR(DATE_TRUNC('month', sale_date), 'Mon YY') AS date,
-            EXTRACT(YEAR  FROM sale_date)::int                AS year,
-            EXTRACT(MONTH FROM sale_date)::int                AS month,
-            COALESCE(SUM(final_price), 0)                     AS revenue
-        FROM fact_sales
-        WHERE user_id = %s AND sale_date BETWEEN %s AND %s
-        GROUP BY DATE_TRUNC('month', sale_date),
-                 EXTRACT(YEAR FROM sale_date),
-                 EXTRACT(MONTH FROM sale_date)
-        ORDER BY year, month
-    """, (uid, dr["from_date"], dr["to_date"]))
-
-    return [{"date": r["date"], "Revenue": float(r["revenue"])} for r in rows]
-
-
-def _commercial_top_vehicles_for(uid: int, dr: dict) -> list:
-    rows = _query("""
-        SELECT
-            COALESCE(dv.model, dv.ar_design, fs.ar_ref) AS vehicle,
-            COUNT(*) AS sales
+            fs.sale_id,
+            dc.full_name   AS client,
+            dv.model       AS product,
+            dv.category,
+            fs.final_price AS value,
+            fs.sale_date   AS date
         FROM fact_sales fs
-        LEFT JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
-        WHERE fs.user_id = %s AND fs.sale_date BETWEEN %s AND %s
-        GROUP BY 1
-        ORDER BY sales DESC
-        LIMIT 8
-    """, (uid, dr["from_date"], dr["to_date"]))
-
-    return [{"vehicle": r["vehicle"], "sales": int(r["sales"])} for r in rows]
-
-
-def _commercial_recent_sales_for(uid: int, dr: dict, limit: int = 10) -> list:
-    rows = _query("""
-        SELECT
-            fs.sale_date::text        AS date,
-            COALESCE(dv.model, dv.ar_design, fs.ar_ref) AS vehicle,
-            COALESCE(dc.full_name, 'Unknown')            AS client,
-            fs.final_price                               AS amount
-        FROM fact_sales fs
-        LEFT JOIN dim_vehicle dv ON dv.ar_ref    = fs.ar_ref
-        LEFT JOIN dim_client  dc ON dc.client_id = fs.client_id
-        WHERE fs.user_id = %s AND fs.sale_date BETWEEN %s AND %s
+        JOIN dim_client  dc ON dc.client_id = fs.client_id
+        JOIN dim_vehicle dv ON dv.ar_ref    = fs.ar_ref
+        WHERE fs.user_id = %s
         ORDER BY fs.sale_date DESC
         LIMIT %s
-    """, (uid, dr["from_date"], dr["to_date"], limit))
+    """, (uid, limit))
+    return {"rows": rows}
 
-    return [{
-        "date":    r["date"],
-        "vehicle": r["vehicle"],
-        "client":  r["client"],
-        "amount":  float(r["amount"] or 0),
-        "amountFmt": f"{round(float(r['amount'] or 0)/1000, 1)}K TND",
-    } for r in rows]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 2 — FUNNEL  (Opportunities → Quotes → Sales)
+#
+#  All funnel endpoints return rows in the shape expected by the frontend:
+#    { period, oppo_won, oppo_lost, quote_won, quote_lost, sale_won, sale_lost }
+#
+#  Periods emitted: Jan n-1 … Dec n-1, Jan n … Dec n, Year n-1, Year n.
+#  "Won" opportunity  = NOT deleted.
+#  "Lost" opportunity = deleted.
+#  "Won" quote        = quote that has a matching sale in fact_sales.
+#  "Lost" quote       = deleted quote (no matching sale).
+#  "Won" sale         = every row in fact_sales (sales are always won).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _funnel_rows(year_n: int, extra_where: str = "", params: tuple = ()):
+    """
+    Returns one dict per (year, month) + two yearly summary dicts,
+    shaped to match the frontend MOCK_DATA format.
+
+    extra_where must use unaliased column names: agency_name, user_id.
+    Callers should NOT prefix with fo./fq./fs.
+    """
+    # Normalise: strip any table-alias prefixes callers might pass
+    def _clean(w):
+        return (w.replace('fo.', '')
+                 .replace('fq.', '')
+                 .replace('fs.', ''))
+
+    clean_where = _clean(extra_where)
+
+    # Opportunities
+    oppo_sql = f"""
+        SELECT
+            EXTRACT(YEAR  FROM created_date)::INT AS yr,
+            EXTRACT(MONTH FROM created_date)::INT AS mo,
+            COUNT(*) FILTER (WHERE deleted IS NOT TRUE) AS won,
+            COUNT(*) FILTER (WHERE deleted IS TRUE)     AS lost
+        FROM fact_opportunities
+        WHERE EXTRACT(YEAR FROM created_date) IN (%s, %s - 1)
+          {clean_where}
+        GROUP BY yr, mo
+    """
+    oppo_rows = _query(oppo_sql, (year_n, year_n) + params)
+    oppo = {(r["yr"], r["mo"]): r for r in oppo_rows}
+
+    # Quotes
+    quote_sql = f"""
+        SELECT
+            EXTRACT(YEAR  FROM created_date)::INT AS yr,
+            EXTRACT(MONTH FROM created_date)::INT AS mo,
+            COUNT(*) FILTER (WHERE deleted IS NOT TRUE) AS won,
+            COUNT(*) FILTER (WHERE deleted IS TRUE)     AS lost
+        FROM fact_quotes
+        WHERE EXTRACT(YEAR FROM created_date) IN (%s, %s - 1)
+          {clean_where}
+        GROUP BY yr, mo
+    """
+    quote_rows = _query(quote_sql, (year_n, year_n) + params)
+    quotes = {(r["yr"], r["mo"]): r for r in quote_rows}
+
+    # Sales (always won — no deleted column)
+    sale_sql = f"""
+        SELECT
+            EXTRACT(YEAR  FROM sale_date)::INT AS yr,
+            EXTRACT(MONTH FROM sale_date)::INT AS mo,
+            COUNT(*) AS won
+        FROM fact_sales
+        WHERE EXTRACT(YEAR FROM sale_date) IN (%s, %s - 1)
+          {clean_where}
+        GROUP BY yr, mo
+    """
+    sale_rows = _query(sale_sql, (year_n, year_n) + params)
+    sales = {(r["yr"], r["mo"]): r for r in sale_rows}
+
+    MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    result = []
+    for yr in (year_n - 1, year_n):
+        suffix = "" if yr == year_n else " n-1"
+        for mo in range(1, 13):
+            label = MONTH_ABBR[mo - 1] + (" n-1" if yr == year_n - 1 else "")
+            o = oppo.get((yr, mo), {})
+            q = quotes.get((yr, mo), {})
+            s = sales.get((yr, mo), {})
+            result.append({
+                "period":    label,
+                "oppo_won":  o.get("won", 0),
+                "oppo_lost": o.get("lost", 0),
+                "quote_won": q.get("won", 0),
+                "quote_lost":q.get("lost", 0),
+                "sale_won":  s.get("won", 0),
+                "sale_lost": 0,
+            })
+
+    # Yearly totals
+    for yr, label in ((year_n - 1, "Year n-1"), (year_n, "Year n")):
+        o = {"won": 0, "lost": 0}
+        q = {"won": 0, "lost": 0}
+        s = {"won": 0}
+        for mo in range(1, 13):
+            ov = oppo.get((yr, mo), {})
+            qv = quotes.get((yr, mo), {})
+            sv = sales.get((yr, mo), {})
+            o["won"]  += ov.get("won",  0)
+            o["lost"] += ov.get("lost", 0)
+            q["won"]  += qv.get("won",  0)
+            q["lost"] += qv.get("lost", 0)
+            s["won"]  += sv.get("won",  0)
+        result.append({
+            "period":    label,
+            "oppo_won":  o["won"],
+            "oppo_lost": o["lost"],
+            "quote_won": q["won"],
+            "quote_lost":q["lost"],
+            "sale_won":  s["won"],
+            "sale_lost": 0,
+        })
+
+    return result
+
+
+def _funnel_by_user(year_n: int, extra_where: str = "", params: tuple = ()):
+    """
+    Per-user yearly totals for the donut cards (Opportunities / Quotes by user).
+    Returns two lists: current year and previous year.
+    """
+    sql_tmpl = f"""
+        SELECT
+            du.user_id,
+            du.first_name || ' ' || du.last_name AS full_name,
+            COUNT(*) FILTER (WHERE fo.deleted IS NOT TRUE) AS oppo_won,
+            COUNT(*) FILTER (WHERE fo.deleted IS TRUE)     AS oppo_lost
+        FROM fact_opportunities fo
+        JOIN dim_user du ON du.user_id = fo.user_id
+        WHERE EXTRACT(YEAR FROM fo.created_date) = %s
+          {extra_where}
+        GROUP BY du.user_id, full_name
+        ORDER BY full_name
+    """
+
+    def _quotes_by_user(yr):
+        q_sql = f"""
+            SELECT
+                du.user_id,
+                du.first_name || ' ' || du.last_name AS full_name,
+                COUNT(*) FILTER (WHERE fq.deleted IS NOT TRUE) AS quote_won,
+                COUNT(*) FILTER (WHERE fq.deleted IS TRUE)     AS quote_lost
+            FROM fact_quotes fq
+            JOIN dim_user du ON du.user_id = fq.user_id
+            WHERE EXTRACT(YEAR FROM fq.created_date) = %s
+              {extra_where.replace('fo.', 'fq.')}
+            GROUP BY du.user_id, full_name
+            ORDER BY full_name
+        """
+        return {r["user_id"]: r for r in _query(q_sql, (yr,) + params)}
+
+    def _build(yr):
+        oppo = {r["user_id"]: r for r in _query(sql_tmpl, (yr,) + params)}
+        quotes = _quotes_by_user(yr)
+        all_ids = set(oppo) | set(quotes)
+        out = []
+        for uid in all_ids:
+            o = oppo.get(uid, {})
+            q = quotes.get(uid, {})
+            out.append({
+                "user_id":    uid,
+                "full_name":  o.get("full_name") or q.get("full_name", ""),
+                "oppo_won":   o.get("oppo_won",   0),
+                "oppo_lost":  o.get("oppo_lost",  0),
+                "quote_won":  q.get("quote_won",  0),
+                "quote_lost": q.get("quote_lost", 0),
+            })
+        return sorted(out, key=lambda x: x["full_name"])
+
+    return {"year_n": _build(year_n), "year_nm1": _build(year_n - 1)}
+
+
+# ── /dashboard/global/funnel/* ────────────────────────────────────────────────
+
+@router.get("/global/funnel/monthly")
+def global_funnel_monthly(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    _require_global(user)
+    year = year or date.today().year
+    rows = _funnel_rows(year)
+    return {"year_n": year, "rows": rows}
+
+
+@router.get("/global/funnel/by-agency")
+def global_funnel_by_agency(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    """Per-agency yearly funnel totals — donut cards in DirectorFunnel."""
+    _require_global(user)
+    year = year or date.today().year
+    return _funnel_by_user(year,
+        extra_where="AND agency_name IS NOT NULL",
+        params=())
+
+
+@router.get("/agency/funnel/monthly")
+def agency_funnel_monthly(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    year = year or date.today().year
+    rows = _funnel_rows(year,
+        extra_where="AND agency_name = %s",
+        params=(user.agency_name,))
+    return {"year_n": year, "agency": user.agency_name, "rows": rows}
+
+
+@router.get("/agency/funnel/by-commercial")
+def agency_funnel_by_commercial(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    """Per-commercial yearly funnel totals — donut cards in AgencyFunnel."""
+    year = year or date.today().year
+    return _funnel_by_user(year,
+        extra_where="AND agency_name = %s",
+        params=(user.agency_name,))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 3 — TRENDS  (Sales units by category / model / month)
+#
+#  Mirrors the same category × model × month structure as revenue, but the
+#  value is `quantity` (units sold) not `final_price`.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _category_model_units(year_n: int, extra_where: str = "", params: tuple = ()):
+    sql = f"""
+        SELECT
+            dv.category,
+            dv.model,
+            EXTRACT(MONTH FROM fs.sale_date)::INT AS month,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s
+                     THEN fs.quantity ELSE 0 END) AS n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s - 1
+                     THEN fs.quantity ELSE 0 END) AS n_minus1
+        FROM fact_sales fs
+        JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
+        WHERE EXTRACT(YEAR FROM fs.sale_date) IN (%s, %s - 1)
+          {extra_where}
+        GROUP BY dv.category, dv.model, month
+        ORDER BY dv.category, dv.model, month
+    """
+    return _query(sql, (year_n, year_n, year_n, year_n) + params)
+
+
+def _client_by_state(year_n: int, month: int, extra_where: str = "", params: tuple = ()):
+    """
+    Units sold grouped by client city (used as 'state') for a given month.
+    Returns rows for year_n and year_n-1.
+    """
+    sql = f"""
+        SELECT
+            dc.city,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s
+                     THEN fs.quantity ELSE 0 END) AS n,
+            SUM(CASE WHEN EXTRACT(YEAR FROM fs.sale_date) = %s - 1
+                     THEN fs.quantity ELSE 0 END) AS n_minus1
+        FROM fact_sales fs
+        JOIN dim_client dc ON dc.client_id = fs.client_id
+        WHERE EXTRACT(MONTH FROM fs.sale_date) = %s
+          AND EXTRACT(YEAR  FROM fs.sale_date) IN (%s, %s - 1)
+          AND dc.city = ANY(%s)
+          {extra_where}
+        GROUP BY dc.city
+        ORDER BY dc.city
+    """
+    return _query(sql, (year_n, year_n, month, year_n, year_n,
+                        TUNISIA_STATES) + params)
+
+
+@router.get("/global/trends/by-category")
+def global_trends_by_category(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    _require_global(user)
+    year = year or date.today().year
+    rows = _category_model_units(year)
+    return {"year_n": year, "rows": rows}
+
+
+@router.get("/global/trends/clients-by-state")
+def global_trends_clients_by_state(
+    year: int = Query(default=None),
+    month: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    """
+    Returns units sold per Tunisian governorate for the requested month
+    (current and previous year). Used by the State Rankings section.
+    """
+    _require_global(user)
+    today = date.today()
+    year  = year  or today.year
+    month = month or today.month
+    rows  = _client_by_state(year, month)
+    return {"year_n": year, "month": month, "rows": rows}
+
+
+@router.get("/agency/trends/by-category")
+def agency_trends_by_category(
+    year: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    year = year or date.today().year
+    rows = _category_model_units(year,
+        extra_where="AND fs.agency_name = %s",
+        params=(user.agency_name,))
+    return {"year_n": year, "agency": user.agency_name, "rows": rows}
+
+
+@router.get("/agency/trends/clients-by-state")
+def agency_trends_clients_by_state(
+    year: int = Query(default=None),
+    month: int = Query(default=None),
+    user=Depends(get_current_user),
+):
+    today = date.today()
+    year  = year  or today.year
+    month = month or today.month
+    rows  = _client_by_state(year, month,
+        extra_where="AND fs.agency_name = %s",
+        params=(user.agency_name,))
+    return {"year_n": year, "month": month, "agency": user.agency_name, "rows": rows}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SECTION 4 — FILTER OPTIONS
+#
+#  FilterContext / AgencyFilterContext / CommercialFilterContext all need
+#  lists of selectable values (categories, models, years).
+#  These endpoints return the distinct values present in the DWH.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/global/filters")
+def global_filters(user=Depends(get_current_user)):
+    _require_global(user)
+    categories = _query(
+        "SELECT DISTINCT category FROM dim_vehicle WHERE category IS NOT NULL ORDER BY category"
+    )
+    agencies = _query(
+        "SELECT DISTINCT agency_name FROM fact_sales WHERE agency_name IS NOT NULL ORDER BY agency_name"
+    )
+    years = _query(
+        "SELECT DISTINCT EXTRACT(YEAR FROM sale_date)::INT AS yr FROM fact_sales ORDER BY yr DESC"
+    )
+    return {
+        "categories": [r["category"] for r in categories],
+        "agencies":   [r["agency_name"] for r in agencies],
+        "years":      [r["yr"] for r in years],
+    }
+
+
+@router.get("/agency/filters")
+def agency_filters(user=Depends(get_current_user)):
+    categories = _query(
+        """SELECT DISTINCT dv.category
+           FROM fact_sales fs
+           JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
+           WHERE fs.agency_name = %s AND dv.category IS NOT NULL
+           ORDER BY dv.category""",
+        (user.agency_name,)
+    )
+    commercials = _query(
+        """SELECT DISTINCT du.user_id, du.first_name || ' ' || du.last_name AS full_name
+           FROM fact_sales fs
+           JOIN dim_user du ON du.user_id = fs.user_id
+           WHERE fs.agency_name = %s
+           ORDER BY full_name""",
+        (user.agency_name,)
+    )
+    years = _query(
+        """SELECT DISTINCT EXTRACT(YEAR FROM sale_date)::INT AS yr
+           FROM fact_sales WHERE agency_name = %s ORDER BY yr DESC""",
+        (user.agency_name,)
+    )
+    return {
+        "categories":  [r["category"] for r in categories],
+        "commercials": [{"id": r["user_id"], "name": r["full_name"]} for r in commercials],
+        "years":       [r["yr"] for r in years],
+    }
+
+
+@router.get("/me/filters")
+def me_filters(user=Depends(get_current_user)):
+    uid = _get_dwh_user_id(user.email)
+    if not uid:
+        raise HTTPException(status_code=404, detail="User not found in DWH")
+    categories = _query(
+        """SELECT DISTINCT dv.category
+           FROM fact_sales fs
+           JOIN dim_vehicle dv ON dv.ar_ref = fs.ar_ref
+           WHERE fs.user_id = %s AND dv.category IS NOT NULL
+           ORDER BY dv.category""",
+        (uid,)
+    )
+    years = _query(
+        """SELECT DISTINCT EXTRACT(YEAR FROM sale_date)::INT AS yr
+           FROM fact_sales WHERE user_id = %s ORDER BY yr DESC""",
+        (uid,)
+    )
+    return {
+        "categories": [r["category"] for r in categories],
+        "years":      [r["yr"] for r in years],
+    }

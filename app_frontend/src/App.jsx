@@ -2,7 +2,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { SidebarProvider } from "./context/SidebarContext";
-import { FilterProvider } from "./components/FilterContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
@@ -30,7 +29,6 @@ export default function App() {
   return (
     <AuthProvider>
       <SidebarProvider>
-      <FilterProvider>
         <BrowserRouter>
           <Routes>
 
@@ -60,7 +58,6 @@ export default function App() {
             <Route path="*" element={<Navigate to="/login" />} />
           </Routes>
         </BrowserRouter>
-      </FilterProvider>
       </SidebarProvider>
     </AuthProvider>
   );
