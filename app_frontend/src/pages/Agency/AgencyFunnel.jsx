@@ -15,8 +15,7 @@ import { useAgencyFunnelMonthly, useAgencyFunnelByCommercial, buildFunnelData, b
 
 const PBI = { colors:["#118DFF","#E66C37","#12239E","#ECC846","#00B5D0","#8764B8","#D13438","#107C10"], pageBg:"#F3F2F1", border:"#E1DFDD", textPrimary:"#252423", textMuted:"#605E5C", gridLine:"#E1DFDD", font:"'Segoe UI', 'Segoe UI Web (West European)', sans-serif", green:"#107C10", red:"#D13438" };
 const card = { background:"#FFFFFF", border:`1px solid ${PBI.border}`, borderRadius:4, padding:"20px 24px 16px", fontFamily:PBI.font, boxShadow:"0 1.6px 3.6px rgba(0,0,0,.08), 0 0.3px 0.9px rgba(0,0,0,.05)" };
-const THIS_YEAR = new Date().getFullYear();
-const LAST_YEAR = THIS_YEAR - 1;
+const CURRENT_YEAR = new Date().getFullYear();
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const now = new Date();
 const CURRENT_MONTH_LABEL  = MONTHS[now.getMonth()];
@@ -88,6 +87,8 @@ const DonutCard = ({title,commercials,valueKey}) => {
 
 function FunnelPageInner() {
   const { selectedYear } = useFilter();
+  const YEAR_N   = selectedYear;
+  const YEAR_NM1 = selectedYear - 1;
 
   const {data:funnelMonthly, loading:l1, error:e1} = useAgencyFunnelMonthly(selectedYear);
   const {data:funnelComm,    loading:l2, error:e2} = useAgencyFunnelByCommercial(selectedYear);
@@ -97,7 +98,7 @@ function FunnelPageInner() {
 
   const yearN   = data.find((d)=>d.period==="Year n")   ??{};
   const yearPrev= data.find((d)=>d.period==="Year n-1") ??{};
-  const funnelData=[{name:"Opportunities",value:(yearN.oppoWon||0)+(yearN.oppoLost||0),fill:PBI.colors[0]},{name:"Quotes Won",value:yearN.quoteWon||0,fill:PBI.colors[2]},{name:"Sales Won",value:yearN.saleWon||0,fill:PBI.colors[7]}];
+  const funnelData=[{name:"Opportunities",value:(yearN.oppoWon||0)+(yearN.oppoLost||0),fill:PBI.colors[0]},{name:"Quotes",value:(yearN.quoteWon||0)+(yearN.quoteLost||0),fill:PBI.colors[2]},{name:"Sales Won",value:yearN.saleWon||0,fill:PBI.colors[7]}];
   const oqRateN=yearN.oppoWon?((yearN.quoteWon/yearN.oppoWon)*100).toFixed(1):"—";
   const qsRateN=yearN.quoteWon?((yearN.saleWon/yearN.quoteWon)*100).toFixed(1):"—";
   const oppoCompare  = MONTHS.map((m)=>{const p=data.find((d)=>d.period===`${m} n-1`)||{},c=data.find((d)=>d.period===m)||{};return{month:m,"n-1":p.oppoWon||0,n:c.oppoWon||0};});
@@ -107,10 +108,10 @@ function FunnelPageInner() {
   if(e1||e2) return <Err msg={e1??e2}/>;
 
   const DONUT_ROWS=[
-    {rowLabel:"Opportunities",yearLabel:`Year ${LAST_YEAR}`,commercials:commsNm1.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Opportunities",valueKey:"oppoTotal"},{title:"Won Opportunities",valueKey:"oppoWon"},{title:"Lost Opportunities",valueKey:"oppoLost"}]},
-    {rowLabel:"Opportunities",yearLabel:`Year ${THIS_YEAR}`,commercials:commsN.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Opportunities",valueKey:"oppoTotal"},{title:"Won Opportunities",valueKey:"oppoWon"},{title:"Lost Opportunities",valueKey:"oppoLost"}]},
-    {rowLabel:"Quotes",yearLabel:`Year ${LAST_YEAR}`,commercials:commsNm1.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Quotes",valueKey:"quoteTotal"},{title:"Won Quotes",valueKey:"quoteWon"},{title:"Lost Quotes",valueKey:"quoteLost"}]},
-    {rowLabel:"Quotes",yearLabel:`Year ${THIS_YEAR}`,commercials:commsN.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Quotes",valueKey:"quoteTotal"},{title:"Won Quotes",valueKey:"quoteWon"},{title:"Lost Quotes",valueKey:"quoteLost"}]},
+    {rowLabel:"Opportunities",yearLabel:`Year ${YEAR_NM1}`,commercials:commsNm1.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Opportunities",valueKey:"oppoTotal"},{title:"Won Opportunities",valueKey:"oppoWon"},{title:"Lost Opportunities",valueKey:"oppoLost"}]},
+    {rowLabel:"Opportunities",yearLabel:`Year ${YEAR_N}`,commercials:commsN.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Opportunities",valueKey:"oppoTotal"},{title:"Won Opportunities",valueKey:"oppoWon"},{title:"Lost Opportunities",valueKey:"oppoLost"}]},
+    {rowLabel:"Quotes",yearLabel:`Year ${YEAR_NM1}`,commercials:commsNm1.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Quotes",valueKey:"quoteTotal"},{title:"Won Quotes",valueKey:"quoteWon"},{title:"Lost Quotes",valueKey:"quoteLost"}]},
+    {rowLabel:"Quotes",yearLabel:`Year ${YEAR_N}`,commercials:commsN.map((c)=>({...c,oppoTotal:c.oppoWon+c.oppoLost,quoteTotal:c.quoteWon+c.quoteLost})),cards:[{title:"Total Quotes",valueKey:"quoteTotal"},{title:"Won Quotes",valueKey:"quoteWon"},{title:"Lost Quotes",valueKey:"quoteLost"}]},
   ];
 
   return (
@@ -119,7 +120,7 @@ function FunnelPageInner() {
       <FilterBar style={{marginBottom:16}}/>
       <div style={{display:"grid",gridTemplateColumns:"2fr 3fr",gap:12,marginBottom:16}}>
         <div style={card}>
-          <p style={{margin:"0 0 4px",fontSize:13,fontWeight:600,color:PBI.textPrimary}}>Funnel (Year n)</p>
+          <p style={{margin:"0 0 4px",fontSize:13,fontWeight:600,color:PBI.textPrimary}}>{`Funnel (${YEAR_N})`}</p>
           <p style={{margin:"0 0 8px",fontSize:11,color:PBI.textMuted}}>Oppos → Quotes → Sales</p>
           <ResponsiveContainer width="100%" height={340}><FunnelChart><Tooltip content={<PBITooltip/>}/><Funnel dataKey="value" data={funnelData} isAnimationActive lastShapeType="rectangle"><LabelList position="right" fill={PBI.textPrimary} style={{fontSize:11,fontFamily:PBI.font}} formatter={(v)=>v.toLocaleString()}/></Funnel></FunnelChart></ResponsiveContainer>
           <div style={{display:"flex",justifyContent:"space-around",marginTop:8}}>{[{label:"Oppos→Quotes",rate:oqRateN,color:PBI.colors[0]},{label:"Quotes→Sales",rate:qsRateN,color:PBI.colors[7]}].map(({label,rate,color})=><div key={label} style={{textAlign:"center"}}><p style={{margin:0,fontSize:20,fontWeight:700,color}}>{rate}%</p><p style={{margin:"2px 0 0",fontSize:10,color:PBI.textMuted}}>{label}</p></div>)}</div>
@@ -128,25 +129,25 @@ function FunnelPageInner() {
           <KpiCard label="Opportunities Won"       value={fmtN(yearN.oppoWon)}    delta={null} positive={true}  color={PBI.colors[7]}/>
           <KpiCard label="Opportunities Lost"      value={fmtN(yearN.oppoLost)}   delta={null} positive={false} color={PBI.colors[6]}/>
           <KpiCard label="Oppos Conv. Rate"        value={yearN.oppoWon&&yearN.oppoLost?+((yearN.oppoWon/(yearN.oppoWon+yearN.oppoLost))*100).toFixed(1)+"%":"—"} delta={null} positive={true} color={PBI.colors[0]}/>
-          <KpiCard label="Opportunities Won (n-1)"  value={fmtN(yearPrev.oppoWon)}  delta={null} positive={true} />
-          <KpiCard label="Opportunities Lost (n-1)" value={fmtN(yearPrev.oppoLost)} delta={null} positive={false}/>
-          <KpiCard label="Oppos Conv. Rate (n-1)"   value={yearPrev.oppoWon&&yearPrev.oppoLost?+((yearPrev.oppoWon/(yearPrev.oppoWon+yearPrev.oppoLost))*100).toFixed(1)+"%":"—"} delta={null} positive={true}/>
+          <KpiCard label={`Opportunities Won (${YEAR_NM1})`}  value={fmtN(yearPrev.oppoWon)}  delta={null} positive={true} />
+          <KpiCard label={`Opportunities Lost (${YEAR_NM1})`} value={fmtN(yearPrev.oppoLost)} delta={null} positive={false}/>
+          <KpiCard label={`Oppos Conv. Rate (${YEAR_NM1})`}   value={yearPrev.oppoWon&&yearPrev.oppoLost?+((yearPrev.oppoWon/(yearPrev.oppoWon+yearPrev.oppoLost))*100).toFixed(1)+"%":"—"} delta={null} positive={true}/>
           <KpiCard label="Quotes Won"       value={fmtN(yearN.quoteWon)}    delta={null} positive={true}  color={PBI.colors[7]}/>
           <KpiCard label="Quotes Lost"      value={fmtN(yearN.quoteLost)}   delta={null} positive={false} color={PBI.colors[6]}/>
           <KpiCard label="Quotes Conv. Rate" value={yearN.quoteWon&&yearN.quoteLost?+((yearN.quoteWon/(yearN.quoteWon+yearN.quoteLost))*100).toFixed(1)+"%":"—"} delta={null} positive={true} color={PBI.colors[0]}/>
-          <KpiCard label="Quotes Won (n-1)"  value={fmtN(yearPrev.quoteWon)}  delta={null} positive={true} />
-          <KpiCard label="Quotes Lost (n-1)" value={fmtN(yearPrev.quoteLost)} delta={null} positive={false}/>
-          <KpiCard label="Quotes Conv. Rate (n-1)" value={yearPrev.quoteWon&&yearPrev.quoteLost?+((yearPrev.quoteWon/(yearPrev.quoteWon+yearPrev.quoteLost))*100).toFixed(1)+"%":"—"} delta={null} positive={true}/>
+          <KpiCard label={`Quotes Won (${YEAR_NM1})`}  value={fmtN(yearPrev.quoteWon)}  delta={null} positive={true} />
+          <KpiCard label={`Quotes Lost (${YEAR_NM1})`} value={fmtN(yearPrev.quoteLost)} delta={null} positive={false}/>
+          <KpiCard label={`Quotes Conv. Rate (${YEAR_NM1})`} value={yearPrev.quoteWon&&yearPrev.quoteLost?+((yearPrev.quoteWon/(yearPrev.quoteWon+yearPrev.quoteLost))*100).toFixed(1)+"%":"—"} delta={null} positive={true}/>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
         {[{title:"Opportunities Won · n-1 vs n",data:oppoCompare},{title:"Quotes Won · n-1 vs n",data:quoteCompare}].map(({title,data:cd})=>(
           <div key={title} style={card}><p style={{margin:"0 0 4px",fontSize:13,fontWeight:600,color:PBI.textPrimary}}>{title}</p><p style={{margin:"0 0 8px",fontSize:11,color:PBI.textMuted}}>By month</p>
-            <ResponsiveContainer width="100%" height={200}><BarChart data={cd} barCategoryGap="30%" barGap={3} margin={{top:4,right:8,left:-12,bottom:0}}><CartesianGrid stroke={PBI.gridLine} vertical={false}/><XAxis dataKey="month" tick={{fontSize:11,fill:PBI.textMuted,fontFamily:PBI.font}} axisLine={{stroke:PBI.border}} tickLine={false}/><YAxis tick={{fontSize:11,fill:PBI.textMuted,fontFamily:PBI.font}} axisLine={{stroke:PBI.border}} tickLine={false}/><Tooltip content={<PBITooltip/>} cursor={{fill:"rgba(17,141,255,.06)"}}/><Legend wrapperStyle={{fontSize:11,fontFamily:PBI.font}}/><Bar dataKey="n-1" fill={PBI.colors[3]} radius={[2,2,0,0]} maxBarSize={32}/><Bar dataKey="n" fill={PBI.colors[0]} radius={[2,2,0,0]} maxBarSize={32}/></BarChart></ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={200}><BarChart data={cd} barCategoryGap="30%" barGap={3} margin={{top:4,right:8,left:-12,bottom:0}}><CartesianGrid stroke={PBI.gridLine} vertical={false}/><XAxis dataKey="month" tick={{fontSize:11,fill:PBI.textMuted,fontFamily:PBI.font}} axisLine={{stroke:PBI.border}} tickLine={false}/><YAxis tick={{fontSize:11,fill:PBI.textMuted,fontFamily:PBI.font}} axisLine={{stroke:PBI.border}} tickLine={false}/><Tooltip content={<PBITooltip/>} cursor={{fill:"rgba(17,141,255,.06)"}}/><Legend wrapperStyle={{fontSize:11,fontFamily:PBI.font}}/><Bar dataKey="n-1" name={String(YEAR_NM1)} fill={PBI.colors[3]} radius={[2,2,0,0]} maxBarSize={32}/><Bar dataKey="n" name={String(YEAR_N)} fill={PBI.colors[0]} radius={[2,2,0,0]} maxBarSize={32}/></BarChart></ResponsiveContainer>
           </div>
         ))}
       </div>
-      <div style={{...card,padding:"20px 24px"}}><p style={{margin:"0 0 4px",fontSize:13,fontWeight:600,color:PBI.textPrimary}}>Conversion Rate Detail</p><p style={{margin:"0 0 12px",fontSize:11,color:PBI.textMuted}}>Metrics as rows · Periods as columns · Rates auto-calculated</p><ConvTable data={data}/></div>
+      <div style={{...card,padding:"20px 24px"}}><p style={{margin:"0 0 4px",fontSize:13,fontWeight:600,color:PBI.textPrimary}}>Conversion Rate Detail</p><p style={{margin:"0 0 12px",fontSize:11,color:PBI.textMuted}}>Metrics as rows · Periods as columns · Rates auto-calculated</p><ConvTable data={data} yearN={YEAR_N} yearNm1={YEAR_NM1}/></div>
       {DONUT_ROWS.map(({rowLabel,yearLabel,commercials,cards},idx)=>(
         <div key={idx} style={{marginTop:16}}>
           <p style={{margin:"0 0 10px",fontSize:13,fontWeight:600,color:PBI.textPrimary,fontFamily:PBI.font}}>{rowLabel} — Share by Commercial <span style={{fontSize:11,fontWeight:400,color:PBI.textMuted,marginLeft:8}}>{yearLabel}</span></p>

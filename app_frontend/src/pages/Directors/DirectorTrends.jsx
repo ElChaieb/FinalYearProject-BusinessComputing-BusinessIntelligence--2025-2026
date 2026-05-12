@@ -20,8 +20,6 @@ import {
 const PBI = { pageBg:"#F3F2F1", border:"#E1DFDD", cardBg:"#FFFFFF", textPrimary:"#252423", textMuted:"#605E5C", gridLine:"#E1DFDD", font:"'Segoe UI', 'Segoe UI Web (West European)', sans-serif", green:"#107C10", red:"#D13438" };
 const card = { background:PBI.cardBg, border:`1px solid ${PBI.border}`, borderRadius:4, padding:"18px 20px", fontFamily:PBI.font, boxShadow:"0 1.6px 3.6px rgba(0,0,0,.08), 0 0.3px 0.9px rgba(0,0,0,.05)" };
 
-const THIS_YEAR = new Date().getFullYear();
-const LAST_YEAR = THIS_YEAR - 1;
 const COLOR_N   = "#118DFF";
 const COLOR_NM1 = "#E66C37";
 const MONTHS      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -32,7 +30,7 @@ const CUR_MONTH_IDX  = now.getMonth();
 const PREV_MONTH_IDX = CUR_MONTH_IDX > 0 ? CUR_MONTH_IDX - 1 : 11;
 
 const fmtN = (n) => (n ?? 0).toLocaleString("fr-TN");
-const pct  = (curr, prev) => { if (!prev) return null; const d = ((curr-prev)/prev)*100; return { label:`${Math.abs(d).toFixed(1)}% vs ${LAST_YEAR}`, up:d>=0 }; };
+const pct  = (curr, prev, prevYear) => { if (!prev) return null; const d = ((curr-prev)/prev)*100; return { label:`${Math.abs(d).toFixed(1)}% vs ${prevYear}`, up:d>=0 }; };
 
 const Spinner = () => <div style={{ padding:24, textAlign:"center", color:PBI.textMuted, fontFamily:PBI.font, fontSize:12 }}>Loading…</div>;
 const Err = ({ msg }) => <div style={{ padding:24, textAlign:"center", color:PBI.red, fontFamily:PBI.font, fontSize:12 }}>{msg}</div>;
@@ -82,7 +80,7 @@ const DonutCard = ({ year, catTotals, dataKey }) => {
   );
 };
 
-const ModelsBarCard = ({ categories }) => {
+const ModelsBarCard = ({ categories, yearN }) => {
   const MAX_MODELS = Math.max(...categories.map((c) => c.models.length), 0);
   const SLOT_OPACITIES = [1, 0.68, 0.42];
   const modelBarData = categories.map((cat) => {
@@ -96,7 +94,7 @@ const ModelsBarCard = ({ categories }) => {
   return (
     <div style={{ ...card, display:"flex", flexDirection:"column" }}>
       <p style={{ margin:"0 0 2px", fontSize:11, color:PBI.textMuted, textTransform:"uppercase", letterSpacing:"0.05em" }}>Sold Models per Category</p>
-      <p style={{ margin:"0 0 10px", fontSize:11, color:PBI.textMuted }}>{THIS_YEAR} · stacked by model</p>
+      <p style={{ margin:"0 0 10px", fontSize:11, color:PBI.textMuted }}>{yearN} · stacked by model</p>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={modelBarData} barCategoryGap="30%" margin={{ top:4, right:8, left:-12, bottom:0 }}>
           <CartesianGrid stroke={PBI.gridLine} strokeDasharray="0" vertical={false} />
@@ -148,7 +146,7 @@ const StateRankCard = ({ title, subtitle, accentColor, states }) => (
   </div>
 );
 
-const TrendsTable = ({ categories, expandedCats, toggleCat }) => {
+const TrendsTable = ({ categories, expandedCats, toggleCat, yearN, yearNm1 }) => {
   const allModels = categories.flatMap((c) => c.models);
   const monthlyTotals = MONTHS.map((abbr,i) => ({ abbr, n: allModels.reduce((s,m) => s+(m.months[i]?.n??0),0), nMinus1: allModels.reduce((s,m) => s+(m.months[i]?.nMinus1??0),0) }));
   const totalN   = monthlyTotals.reduce((s,m) => s+m.n, 0);
@@ -158,7 +156,7 @@ const TrendsTable = ({ categories, expandedCats, toggleCat }) => {
   return (
     <div style={{ ...card, padding:"20px 24px", overflowX:"auto" }}>
       <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>Sales Breakdown by Category &amp; Model</p>
-      <p style={{ margin:"0 0 16px", fontSize:11, color:PBI.textMuted }}>Units sold · click a category to expand · {THIS_YEAR} vs {LAST_YEAR}</p>
+      <p style={{ margin:"0 0 16px", fontSize:11, color:PBI.textMuted }}>Units sold · click a category to expand · {yearN} vs {yearNm1}</p>
       <table style={{ borderCollapse:"collapse", fontFamily:PBI.font, fontSize:12, minWidth:"100%" }}>
         <thead>
           <tr>
@@ -170,12 +168,12 @@ const TrendsTable = ({ categories, expandedCats, toggleCat }) => {
             <th style={{ ...thBase, textAlign:"left", position:"sticky", left:0, zIndex:3 }} />
             {MONTHS.map((m) => (
               <>
-                <th key={`${m}-nm1`} style={{ ...thBase, color:COLOR_NM1, borderLeft:`1px solid ${PBI.border}`, minWidth:72 }}>{LAST_YEAR}</th>
-                <th key={`${m}-n`}   style={{ ...thBase, color:COLOR_N, minWidth:72 }}>{THIS_YEAR}</th>
+                <th key={`${m}-nm1`} style={{ ...thBase, color:COLOR_NM1, borderLeft:`1px solid ${PBI.border}`, minWidth:72 }}>{yearNm1}</th>
+                <th key={`${m}-n`}   style={{ ...thBase, color:COLOR_N, minWidth:72 }}>{yearN}</th>
               </>
             ))}
-            <th style={{ ...thBase, color:COLOR_NM1, borderLeft:`2px solid ${PBI.border}`, background:"#EDEBE9", minWidth:80 }}>{LAST_YEAR}</th>
-            <th style={{ ...thBase, color:COLOR_N,   background:"#EDEBE9", minWidth:80 }}>{THIS_YEAR}</th>
+            <th style={{ ...thBase, color:COLOR_NM1, borderLeft:`2px solid ${PBI.border}`, background:"#EDEBE9", minWidth:80 }}>{yearNm1}</th>
+            <th style={{ ...thBase, color:COLOR_N,   background:"#EDEBE9", minWidth:80 }}>{yearN}</th>
           </tr>
         </thead>
         <tbody>
@@ -184,7 +182,7 @@ const TrendsTable = ({ categories, expandedCats, toggleCat }) => {
             const catMonths = MONTHS.map((_,mi) => ({ n: cat.models.reduce((s,m) => s+(m.months[mi]?.n??0),0), nMinus1: cat.models.reduce((s,m) => s+(m.months[mi]?.nMinus1??0),0) }));
             const catTotalN   = catMonths.reduce((s,m) => s+m.n, 0);
             const catTotalNM1 = catMonths.reduce((s,m) => s+m.nMinus1, 0);
-            const catPct = pct(catTotalN, catTotalNM1);
+            const catPct = pct(catTotalN, catTotalNM1, yearNm1);
             return (
               <>
                 <tr key={cat.id} onClick={() => toggleCat(cat.id)} style={{ cursor:"pointer", background:"#F7F6F5" }} onMouseEnter={(e) => (e.currentTarget.style.background="#EDEBE9")} onMouseLeave={(e) => (e.currentTarget.style.background="#F7F6F5")}>
@@ -246,6 +244,8 @@ function TrendsPage() {
   const toggleCat = (id) => setExpandedCats((prev) => prev.includes(id) ? prev.filter((x) => x!==id) : [...prev,id]);
 
   const { selectedYear } = useFilter();
+  const yearN   = selectedYear;
+  const yearNm1 = selectedYear - 1;
 
   const { data: catData,           loading:l1, error:e1 } = useGlobalTrendsByCategory(selectedYear);
   const { data: stateCurData,      loading:l2, error:e2 } = useGlobalTrendsClientsByState(selectedYear, CUR_MONTH_IDX+1);
@@ -279,13 +279,13 @@ function TrendsPage() {
     <div style={{ background:PBI.pageBg, minHeight:"100vh", padding:"20px 24px", fontFamily:PBI.font }}>
       <div style={{ marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:20, fontWeight:600, color:PBI.textPrimary }}>Trends &amp; Client Base</h1>
-        <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>Sales Trends · {THIS_YEAR} vs {LAST_YEAR}</p>
+        <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>Sales Trends · {yearN} vs {yearNm1}</p>
       </div>
       <FilterBar style={{ marginBottom:12 }} />
 
       {/* KPI row */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:16, alignItems:"stretch" }}>
-        <KpiCard label="Total Sales" value={fmtN(totalN)} sub={`${fmtN(totalNM1)} in ${LAST_YEAR}`} trend={pct(totalN,totalNM1)} />
+        <KpiCard label="Total Sales" value={fmtN(totalN)} sub={`${fmtN(totalNM1)} in ${yearNm1}`} trend={pct(totalN,totalNM1,yearNm1)} />
         <KpiCard label="Total Categories" value={String(categories.length)} sub={`${categories.reduce((s,c)=>s+c.models.length,0)} models tracked`} />
         {highest && (
           <div style={card}>
@@ -295,7 +295,7 @@ function TrendsPage() {
               <p style={{ margin:0, fontSize:18, fontWeight:700, color:PBI.textPrimary }}>{highest.label}</p>
             </div>
             <p style={{ margin:"2px 0 0", fontSize:22, fontWeight:700, color:PBI.green, lineHeight:1.1 }}>{fmtN(highest.n)}<span style={{ fontSize:11, fontWeight:400, color:PBI.textMuted, marginLeft:4 }}>units</span></p>
-            {pct(highest.n,highest.nM1) && (() => { const t=pct(highest.n,highest.nM1); return <p style={{ margin:"6px 0 0", fontSize:12, color:t.up?PBI.green:PBI.red }}>{t.up?"▲":"▼"} {t.label}</p>; })()}
+            {pct(highest.n,highest.nM1,yearNm1) && (() => { const t=pct(highest.n,highest.nM1,yearNm1); return <p style={{ margin:"6px 0 0", fontSize:12, color:t.up?PBI.green:PBI.red }}>{t.up?"▲":"▼"} {t.label}</p>; })()}
           </div>
         )}
         {lowest && (
@@ -306,19 +306,19 @@ function TrendsPage() {
               <p style={{ margin:0, fontSize:18, fontWeight:700, color:PBI.textPrimary }}>{lowest.label}</p>
             </div>
             <p style={{ margin:"2px 0 0", fontSize:22, fontWeight:700, color:PBI.red, lineHeight:1.1 }}>{fmtN(lowest.n)}<span style={{ fontSize:11, fontWeight:400, color:PBI.textMuted, marginLeft:4 }}>units</span></p>
-            {pct(lowest.n,lowest.nM1) && (() => { const t=pct(lowest.n,lowest.nM1); return <p style={{ margin:"6px 0 0", fontSize:12, color:t.up?PBI.green:PBI.red }}>{t.up?"▲":"▼"} {t.label}</p>; })()}
+            {pct(lowest.n,lowest.nM1,yearNm1) && (() => { const t=pct(lowest.n,lowest.nM1,yearNm1); return <p style={{ margin:"6px 0 0", fontSize:12, color:t.up?PBI.green:PBI.red }}>{t.up?"▲":"▼"} {t.label}</p>; })()}
           </div>
         )}
       </div>
 
       {/* Donut + models bar */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1.2fr", gap:12, marginBottom:16, alignItems:"stretch" }}>
-        <DonutCard year={THIS_YEAR} catTotals={catTotals} dataKey="n"  />
-        <DonutCard year={LAST_YEAR} catTotals={catTotals} dataKey="nM1" />
-        <ModelsBarCard categories={categories} />
+        <DonutCard year={yearN} catTotals={catTotals} dataKey="n"  />
+        <DonutCard year={yearNm1} catTotals={catTotals} dataKey="nM1" />
+        <ModelsBarCard categories={categories} yearN={yearN} />
       </div>
 
-      <TrendsTable categories={categories} expandedCats={expandedCats} toggleCat={toggleCat} />
+      <TrendsTable categories={categories} expandedCats={expandedCats} toggleCat={toggleCat} yearN={yearN} yearNm1={yearNm1} />
 
       {/* State rankings */}
       <div style={{ marginTop:16 }}>

@@ -36,8 +36,6 @@ const PBI = {
 };
 const card = { background: PBI.cardBg, border: `1px solid ${PBI.border}`, borderRadius: 4, padding: "20px 24px 16px", fontFamily: PBI.font, boxShadow: "0 1.6px 3.6px rgba(0,0,0,.08), 0 0.3px 0.9px rgba(0,0,0,.05)" };
 
-const THIS_YEAR = new Date().getFullYear();
-const LAST_YEAR = THIS_YEAR - 1;
 const COLOR_N   = "#118DFF";
 const COLOR_NM1 = "#E66C37";
 const MONTHS      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -45,7 +43,7 @@ const MONTHS_FULL = ["January","February","March","April","May","June","July","A
 
 const fmt = (n) => new Intl.NumberFormat("fr-TN", { style: "currency", currency: "TND", maximumFractionDigits: 0 }).format(n ?? 0);
 const fmtShort = (n) => { if (n >= 1e6) return `${(n/1e6).toFixed(1)}M TND`; if (n >= 1e3) return `${(n/1e3).toFixed(0)}k TND`; return `${n} TND`; };
-const pct = (curr, prev) => { if (!prev) return null; const d = ((curr - prev) / prev) * 100; return { label: `${Math.abs(d).toFixed(1)}% vs ${LAST_YEAR}`, up: d >= 0 }; };
+const pct = (curr, prev, prevYear) => { if (!prev) return null; const d = ((curr - prev) / prev) * 100; return { label: `${Math.abs(d).toFixed(1)}% vs ${prevYear}`, up: d >= 0 }; };
 
 // ─── Loading / Error placeholders ─────────────────────────────────────────────
 const Spinner = () => <div style={{ padding: 24, textAlign: "center", color: PBI.textMuted, fontFamily: PBI.font, fontSize: 12 }}>Loading…</div>;
@@ -76,11 +74,11 @@ const PBITooltip = ({ active, payload, label }) => {
 };
 
 // ─── Bar chart ────────────────────────────────────────────────────────────────
-const RevenueBarChart = ({ monthlyTotals }) => {
-  const data = monthlyTotals.map((m) => ({ month: m.abbr, [LAST_YEAR]: m.nMinus1, [THIS_YEAR]: m.n }));
+const RevenueBarChart = ({ monthlyTotals, yearN, yearNm1 }) => {
+  const data = monthlyTotals.map((m) => ({ month: m.abbr, [yearNm1]: m.nMinus1, [yearN]: m.n }));
   return (
     <div style={{ ...card, marginBottom: 16 }}>
-      <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>Monthly Revenue — {THIS_YEAR} vs {LAST_YEAR}</p>
+      <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>Monthly Revenue — {yearN} vs {yearNm1}</p>
       <p style={{ margin:"0 0 12px", fontSize:11, color:PBI.textMuted }}>All categories combined · year-over-year by month</p>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} barCategoryGap="30%" barGap={3} margin={{ top:4, right:8, left:8, bottom:0 }}>
@@ -89,8 +87,8 @@ const RevenueBarChart = ({ monthlyTotals }) => {
           <YAxis tick={{ fontSize:11, fill:PBI.textMuted, fontFamily:PBI.font }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
           <Tooltip content={<PBITooltip />} cursor={{ fill:"rgba(17,141,255,.06)" }} />
           <Legend wrapperStyle={{ fontSize:11, fontFamily:PBI.font, paddingTop:8 }} formatter={(val) => <span style={{ color:PBI.textMuted }}>{val}</span>} />
-          <Bar dataKey={LAST_YEAR} name={String(LAST_YEAR)} fill={COLOR_NM1} radius={[2,2,0,0]} maxBarSize={28} />
-          <Bar dataKey={THIS_YEAR} name={String(THIS_YEAR)} fill={COLOR_N}   radius={[2,2,0,0]} maxBarSize={28} />
+          <Bar dataKey={yearNm1} name={String(yearNm1)} fill={COLOR_NM1} radius={[2,2,0,0]} maxBarSize={28} />
+          <Bar dataKey={yearN} name={String(yearN)} fill={COLOR_N}   radius={[2,2,0,0]} maxBarSize={28} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -144,7 +142,7 @@ const AgencyDonutCard = ({ title, subtitle, slices }) => {
 };
 
 // ─── Breakdown table (same as original, but data is prop-driven) ──────────────
-const RevenueTable = ({ categories, expandedCats, toggleCat }) => {
+const RevenueTable = ({ categories, expandedCats, toggleCat, yearN, yearNm1 }) => {
   const allModels = categories.flatMap((c) => c.models);
   const monthlyTotals = MONTHS.map((abbr, i) => ({
     abbr,
@@ -160,7 +158,7 @@ const RevenueTable = ({ categories, expandedCats, toggleCat }) => {
   return (
     <div style={{ padding:"20px 0px" }}>
       <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>Revenue Breakdown by Category &amp; Model</p>
-      <p style={{ margin:"0 0 12px", fontSize:11, color:PBI.textMuted }}>Click a category to expand · {THIS_YEAR} vs {LAST_YEAR} per month</p>
+      <p style={{ margin:"0 0 12px", fontSize:11, color:PBI.textMuted }}>Click a category to expand · {yearN} vs {yearNm1} per month</p>
       <div style={{ ...card, overflowX:"auto" }}>
         <table style={{ borderCollapse:"collapse", fontFamily:PBI.font, fontSize:12, minWidth:"100%" }}>
           <thead>
@@ -173,12 +171,12 @@ const RevenueTable = ({ categories, expandedCats, toggleCat }) => {
               <th style={{ ...thBase, textAlign:"left", position:"sticky", left:0, zIndex:3 }} />
               {MONTHS.map((m) => (
                 <>
-                  <th key={`${m}-nm1`} style={{ ...thBase, color:COLOR_NM1, borderLeft:`1px solid ${PBI.border}`, minWidth:88 }}>{LAST_YEAR}</th>
-                  <th key={`${m}-n`}   style={{ ...thBase, color:COLOR_N,   minWidth:88 }}>{THIS_YEAR}</th>
+                  <th key={`${m}-nm1`} style={{ ...thBase, color:COLOR_NM1, borderLeft:`1px solid ${PBI.border}`, minWidth:88 }}>{yearNm1}</th>
+                  <th key={`${m}-n`}   style={{ ...thBase, color:COLOR_N,   minWidth:88 }}>{yearN}</th>
                 </>
               ))}
-              <th style={{ ...thBase, color:COLOR_NM1, borderLeft:`2px solid ${PBI.border}`, background:"#EDEBE9", minWidth:88 }}>{LAST_YEAR}</th>
-              <th style={{ ...thBase, color:COLOR_N,   background:"#EDEBE9", minWidth:88 }}>{THIS_YEAR}</th>
+              <th style={{ ...thBase, color:COLOR_NM1, borderLeft:`2px solid ${PBI.border}`, background:"#EDEBE9", minWidth:88 }}>{yearNm1}</th>
+              <th style={{ ...thBase, color:COLOR_N,   background:"#EDEBE9", minWidth:88 }}>{yearN}</th>
             </tr>
           </thead>
           <tbody>
@@ -250,6 +248,8 @@ function RevenueInner() {
   const toggleCat = (id) => setExpandedCats((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   const { selectedYear } = useFilter();
+  const yearN   = selectedYear;
+  const yearNm1 = selectedYear - 1;
 
   const { data: monthlyData,   loading: l1, error: e1 } = useGlobalRevenueMonthly(selectedYear);
   const { data: categoryData,  loading: l2, error: e2 } = useGlobalRevenueByCategory(selectedYear);
@@ -282,10 +282,10 @@ function RevenueInner() {
     agencyRevenue.map((a) => ({ name: a.label, color: a.color, value: valueKey(a) }));
 
   const DONUT_CARDS = [
-    { title: "Agency Share — Current Month",  subtitle: `${MONTHS_FULL[curIdx]} ${THIS_YEAR}`,    slices: makeAgencySlices((a) => a.months[curIdx]?.n       ?? 0) },
-    { title: `Agency Share — Year ${THIS_YEAR}`, subtitle: "Full year to date",                   slices: makeAgencySlices((a) => a.months.reduce((s, m) => s + m.n,       0)) },
-    { title: "Agency Share — Last Month",     subtitle: `${MONTHS_FULL[prevIdx]} ${THIS_YEAR}`,   slices: makeAgencySlices((a) => a.months[prevIdx]?.n      ?? 0) },
-    { title: `Agency Share — Year ${LAST_YEAR}`, subtitle: "Full previous year",                  slices: makeAgencySlices((a) => a.months.reduce((s, m) => s + m.nMinus1, 0)) },
+    { title: "Agency Share — Current Month",  subtitle: `${MONTHS_FULL[curIdx]} ${yearN}`,    slices: makeAgencySlices((a) => a.months[curIdx]?.n       ?? 0) },
+    { title: `Agency Share — Year ${yearN}`, subtitle: "Full year to date",                   slices: makeAgencySlices((a) => a.months.reduce((s, m) => s + m.n,       0)) },
+    { title: "Agency Share — Last Month",     subtitle: `${MONTHS_FULL[prevIdx]} ${yearN}`,   slices: makeAgencySlices((a) => a.months[prevIdx]?.n      ?? 0) },
+    { title: `Agency Share — Year ${yearNm1}`, subtitle: "Full previous year",                  slices: makeAgencySlices((a) => a.months.reduce((s, m) => s + m.nMinus1, 0)) },
   ];
 
   if (l1 || l2 || l3) return <Spinner />;
@@ -295,15 +295,15 @@ function RevenueInner() {
     <div style={{ background:PBI.pageBg, minHeight:"100vh", padding:"20px 24px", fontFamily:PBI.font }}>
       <div style={{ marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:20, fontWeight:600, color:PBI.textPrimary }}>Revenue</h1>
-        <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>{THIS_YEAR} vs {LAST_YEAR}</p>
+        <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>{yearN} vs {yearNm1}</p>
       </div>
       <FilterBar style={{ marginBottom:14 }} />
       <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:16 }}>
-        <KpiCard label="Total Revenue"                                           value={fmt(totalN)}    trend={pct(totalN,   totalNM1)} />
-        <KpiCard label={`Revenue This Month — ${MONTHS_FULL[curIdx]} ${THIS_YEAR}`} value={fmt(thisMonN)}  trend={pct(thisMonN, thisMonNM1)} />
-        <KpiCard label={`Revenue Last Month — ${MONTHS_FULL[prevIdx]} ${THIS_YEAR}`} value={fmt(lastMonN)} trend={pct(lastMonN, lastMonNM1)} />
+        <KpiCard label="Total Revenue"                                           value={fmt(totalN)}    trend={pct(totalN, totalNM1, yearNm1)} />
+        <KpiCard label={`Revenue This Month — ${MONTHS_FULL[curIdx]} ${yearN}`} value={fmt(thisMonN)}  trend={pct(thisMonN, thisMonNM1, yearNm1)} />
+        <KpiCard label={`Revenue Last Month — ${MONTHS_FULL[prevIdx]} ${yearN}`} value={fmt(lastMonN)} trend={pct(lastMonN, lastMonNM1, yearNm1)} />
       </div>
-      <RevenueBarChart monthlyTotals={monthlyTotals} />
+      <RevenueBarChart monthlyTotals={monthlyTotals} yearN={yearN} yearNm1={yearNm1} />
       {/* Agency donut row */}
       <div style={{ marginTop:16 }}>
         <p style={{ margin:"0 0 10px", fontSize:13, fontWeight:600, color:PBI.textPrimary, fontFamily:PBI.font }}>
@@ -313,7 +313,7 @@ function RevenueInner() {
           {DONUT_CARDS.map((c) => <AgencyDonutCard key={c.title} {...c} />)}
         </div>
       </div>
-      <RevenueTable categories={categories} expandedCats={expandedCats} toggleCat={toggleCat} />
+      <RevenueTable categories={categories} expandedCats={expandedCats} toggleCat={toggleCat} yearN={yearN} yearNm1={yearNm1} />
     </div>
   );
 }

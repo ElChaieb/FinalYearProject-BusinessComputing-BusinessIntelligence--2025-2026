@@ -8,7 +8,6 @@
  * Usage:
  *   const { data, loading, error } = useDashboard(
  *     "/dashboard/global/revenue/monthly",
- *     { year: 2025 }
  *   );
  *
  * The hook re-fetches whenever `path` or any `params` value changes.

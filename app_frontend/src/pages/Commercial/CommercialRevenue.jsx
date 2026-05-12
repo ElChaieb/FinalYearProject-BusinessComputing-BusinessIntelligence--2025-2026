@@ -13,8 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { useFilter } from "../../components/FilterContext"; // year filter
-import { FilterProvider, FilterBar } from "../../components/CommercialFilterContext";
+import { useFilter, FilterProvider, FilterBar } from "../../components/CommercialFilterContext";
 import Layout from "../../components/Layout";
 import {
   useMeRevenueKpis,
@@ -38,8 +37,6 @@ const card = {
   boxShadow: "0 1.6px 3.6px rgba(0,0,0,.08), 0 0.3px 0.9px rgba(0,0,0,.05)",
 };
 
-const THIS_YEAR = new Date().getFullYear();
-const LAST_YEAR = THIS_YEAR - 1;
 const COLOR_N   = "#118DFF";
 const COLOR_NM1 = "#E66C37";
 const MONTHS      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -51,7 +48,7 @@ const PREV_IDX    = CUR_IDX > 0 ? CUR_IDX - 1 : 11;
 const fmt      = (n) => new Intl.NumberFormat("fr-TN", { style:"currency", currency:"TND", maximumFractionDigits:0 }).format(n ?? 0);
 const fmtShort = (n) => { if (n >= 1e6) return `${(n/1e6).toFixed(1)}M TND`; if (n >= 1e3) return `${(n/1e3).toFixed(0)}k TND`; return `${n ?? 0} TND`; };
 const fmtDate  = (d) => d ? new Date(d).toLocaleDateString("fr-TN", { day:"2-digit", month:"short", year:"numeric" }) : "—";
-const pct      = (curr, prev) => { if (!prev) return null; const d = ((curr-prev)/prev)*100; return { label:`${Math.abs(d).toFixed(1)}% vs ${LAST_YEAR}`, up:d>=0 }; };
+const pct      = (curr, prev, prevYear) => { if (!prev) return null; const d = ((curr-prev)/prev)*100; return { label:`${Math.abs(d).toFixed(1)}% vs ${prevYear}`, up:d>=0 }; };
 
 const Spinner  = () => <div style={{ padding:24, textAlign:"center", color:PBI.textMuted, fontFamily:PBI.font, fontSize:12 }}>Loading…</div>;
 const ErrMsg   = ({ msg }) => <div style={{ padding:24, textAlign:"center", color:PBI.red, fontFamily:PBI.font, fontSize:12 }}>{msg}</div>;
@@ -67,7 +64,7 @@ const KpiCard = ({ label, value, trend, accentColor, sub }) => (
 );
 
 // ─── Win-rate ring ─────────────────────────────────────────────────────────────
-const WinRateCard = ({ won, lost }) => {
+const WinRateCard = ({ won, lost, yearN }) => {
   const total   = (won ?? 0) + (lost ?? 0);
   const winPct  = total ? +((won / total) * 100).toFixed(1) : 0;
   const ringData = [
@@ -91,7 +88,7 @@ const WinRateCard = ({ won, lost }) => {
         </div>
       </div>
       <div style={{ flex:1 }}>
-        <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:600, color:PBI.textPrimary }}>Quote Win Rate — {THIS_YEAR}</p>
+        <p style={{ margin:"0 0 10px", fontSize:12, fontWeight:600, color:PBI.textPrimary }}>Quote Win Rate — {yearN}</p>
         {ringData.map((d, i) => (
           <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -123,11 +120,11 @@ const PBITooltip = ({ active, payload, label }) => {
   );
 };
 
-const RevenueBarChart = ({ monthlyTotals }) => {
-  const data = monthlyTotals.map((m) => ({ month:m.abbr, [LAST_YEAR]:m.nMinus1, [THIS_YEAR]:m.n }));
+const RevenueBarChart = ({ monthlyTotals, yearN, yearNm1 }) => {
+  const data = monthlyTotals.map((m) => ({ month:m.abbr, [yearNm1]:m.nMinus1, [yearN]:m.n }));
   return (
     <div style={{ ...card, marginBottom:16 }}>
-      <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>Monthly Revenue — {THIS_YEAR} vs {LAST_YEAR}</p>
+      <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>Monthly Revenue — {yearN} vs {yearNm1}</p>
       <p style={{ margin:"0 0 12px", fontSize:11, color:PBI.textMuted }}>Your personal sales · year-over-year by month</p>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data} barCategoryGap="30%" barGap={3} margin={{ top:4, right:8, left:8, bottom:0 }}>
@@ -136,8 +133,8 @@ const RevenueBarChart = ({ monthlyTotals }) => {
           <YAxis tick={{ fontSize:11, fill:PBI.textMuted, fontFamily:PBI.font }} axisLine={false} tickLine={false} tickFormatter={(v) => v>=1000?`${(v/1000).toFixed(0)}k`:v} />
           <Tooltip content={<PBITooltip />} cursor={{ fill:"rgba(17,141,255,.06)" }} />
           <Legend wrapperStyle={{ fontSize:11, fontFamily:PBI.font, paddingTop:8 }} formatter={(val) => <span style={{ color:PBI.textMuted }}>{val}</span>} />
-          <Bar dataKey={LAST_YEAR} name={String(LAST_YEAR)} fill={COLOR_NM1} radius={[2,2,0,0]} maxBarSize={28} />
-          <Bar dataKey={THIS_YEAR} name={String(THIS_YEAR)} fill={COLOR_N}   radius={[2,2,0,0]} maxBarSize={28} />
+          <Bar dataKey={yearNm1} name={String(yearNm1)} fill={COLOR_NM1} radius={[2,2,0,0]} maxBarSize={28} />
+          <Bar dataKey={yearN} name={String(yearN)} fill={COLOR_N}   radius={[2,2,0,0]} maxBarSize={28} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -145,7 +142,7 @@ const RevenueBarChart = ({ monthlyTotals }) => {
 };
 
 // ─── Category donut ────────────────────────────────────────────────────────────
-const CategoryDonut = ({ categories }) => {
+const CategoryDonut = ({ categories, yearN }) => {
   const donutData = categories.map((c) => ({
     name:  c.label,
     value: c.models.flatMap((m) => m.months).reduce((s, mo) => s + (mo.n ?? 0), 0),
@@ -155,7 +152,7 @@ const CategoryDonut = ({ categories }) => {
   return (
     <div style={{ ...card, padding:"16px 20px" }}>
       <p style={{ margin:"0 0 2px", fontSize:12, fontWeight:600, color:PBI.textPrimary }}>Revenue by Category</p>
-      <p style={{ margin:"0 0 12px", fontSize:10, color:PBI.textMuted }}>{THIS_YEAR} · all categories</p>
+      <p style={{ margin:"0 0 12px", fontSize:10, color:PBI.textMuted }}>{yearN} · all categories</p>
       <div style={{ display:"flex", alignItems:"center", gap:20 }}>
         <div style={{ position:"relative", width:130, height:130, flexShrink:0 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -254,6 +251,8 @@ const RecentSalesTable = ({ rows }) => {
 // ─── Page inner ────────────────────────────────────────────────────────────────
 function CommercialRevenueInner() {
   const { selectedYear } = useFilter();
+  const yearN   = selectedYear;
+  const yearNm1 = selectedYear - 1;
 
   const { data:kpiData,     loading:l1, error:e1 } = useMeRevenueKpis(selectedYear);
   const { data:monthlyData, loading:l2, error:e2 } = useMeRevenueMonthly(selectedYear);
@@ -277,10 +276,10 @@ function CommercialRevenueInner() {
   const recentRows = salesData?.rows ?? [];
 
   const kpis = [
-    { label:"Total Revenue",          value:fmt(rev.total_n),      trend:pct(rev.total_n, rev.total_nm1),       accentColor:COLOR_N },
-    { label:`Revenue — ${MONTHS_FULL[CUR_IDX]}`, value:fmt(rev.this_month_n), trend:pct(rev.this_month_n, rev.this_month_nm1), accentColor:"#12239E" },
-    { label:`Revenue — ${MONTHS_FULL[PREV_IDX]}`, value:fmt(rev.last_month_n), sub:`vs ${fmt(rev.this_month_nm1 ?? 0)} in ${LAST_YEAR}`, accentColor:"#E66C37" },
-    { label:"Deals Closed",           value:(deals.total ?? 0).toLocaleString(), sub:`${(deals.this_month ?? 0)} this month · ${(deals.total_nm1 ?? 0)} in ${LAST_YEAR}`, accentColor:PBI.colors[7] },
+    { label:"Total Revenue",          value:fmt(rev.total_n),      trend:pct(rev.total_n, rev.total_nm1, yearNm1),       accentColor:COLOR_N },
+    { label:`Revenue — ${MONTHS_FULL[CUR_IDX]}`, value:fmt(rev.this_month_n), trend:pct(rev.this_month_n, rev.this_month_nm1, yearNm1), accentColor:"#12239E" },
+    { label:`Revenue — ${MONTHS_FULL[PREV_IDX]}`, value:fmt(rev.last_month_n), sub:`vs ${fmt(rev.this_month_nm1 ?? 0)} in ${yearNm1}`, accentColor:"#E66C37" },
+    { label:"Deals Closed",           value:(deals.total ?? 0).toLocaleString(), sub:`${(deals.this_month ?? 0)} this month · ${(deals.total_nm1 ?? 0)} in ${yearNm1}`, accentColor:PBI.colors[7] },
   ];
 
   if (l1 || l2 || l3 || l4) return <Spinner />;
@@ -290,7 +289,7 @@ function CommercialRevenueInner() {
     <div style={{ background:PBI.pageBg, minHeight:"100vh", padding:"20px 24px", fontFamily:PBI.font }}>
       <div style={{ marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:20, fontWeight:600, color:PBI.textPrimary }}>My Revenue</h1>
-        <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>{THIS_YEAR} vs {LAST_YEAR}</p>
+        <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>{yearN} vs {yearNm1}</p>
       </div>
       <FilterBar style={{ marginBottom:14 }} />
 
@@ -300,12 +299,12 @@ function CommercialRevenueInner() {
       </div>
 
       {/* Bar chart */}
-      <RevenueBarChart monthlyTotals={monthlyTotals} />
+      <RevenueBarChart monthlyTotals={monthlyTotals} yearN={yearN} yearNm1={yearNm1} />
 
       {/* Donut + win rate */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
-        <CategoryDonut categories={categories} />
-        <WinRateCard won={wonQ} lost={lostQ} />
+        <CategoryDonut categories={categories} yearN={yearN} />
+        <WinRateCard won={wonQ} lost={lostQ} yearN={yearN} />
       </div>
 
       {/* Recent sales */}
