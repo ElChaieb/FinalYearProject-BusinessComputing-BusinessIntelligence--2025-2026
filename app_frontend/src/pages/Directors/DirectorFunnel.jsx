@@ -65,8 +65,8 @@ const ConvTable = ({ data, yearN, yearNm1 }) => {
   // Enrich a single period object with computed rates
   const enrich = (d = {}) => ({
     ...d,
-    oqRate: d.oppoWon ? +((d.quoteWon / d.oppoWon) * 100).toFixed(1) : null,
-    qsRate: d.quoteWon ? +((d.saleWon  / d.quoteWon) * 100).toFixed(1) : null,
+    oqRate: (d.oppoWon || d.oppoLost) ? +((d.oppoWon / (d.oppoWon + d.oppoLost)) * 100).toFixed(1) : null,
+    qsRate: (d.quoteWon || d.quoteLost) ? +((d.quoteWon / (d.quoteWon + d.quoteLost)) * 100).toFixed(1) : null,
   });
 
   // Yearly totals
@@ -224,10 +224,10 @@ function FunnelPageInner() {
   const funnelData = [
     { name:"Opportunities", value:(yearN.oppoWon||0)+(yearN.oppoLost||0), fill:PBI.colors[0] },
     { name:"Quotes",        value:(yearN.quoteWon||0)+(yearN.quoteLost||0), fill:PBI.colors[2] },
-    { name:"Sales Won",     value: yearN.saleWon||0,                      fill:PBI.colors[7] },
+    { name:"Sales",     value: yearN.saleWon||0,                      fill:PBI.colors[7] },
   ];
-  const oqRateN = yearN.oppoWon  ? ((yearN.quoteWon / yearN.oppoWon)   * 100).toFixed(1) : "—";
-  const qsRateN = yearN.quoteWon ? ((yearN.saleWon  / yearN.quoteWon)  * 100).toFixed(1) : "—";
+  const oqRateN = (yearN.oppoWon || yearN.oppoLost) ? ((yearN.oppoWon / (yearN.oppoWon + yearN.oppoLost)) * 100).toFixed(1) : "—";
+  const qsRateN = (yearN.quoteWon || yearN.quoteLost) ? ((yearN.quoteWon / (yearN.quoteWon + yearN.quoteLost)) * 100).toFixed(1) : "—";
 
   const oppoCompareData  = MONTHS.map((m) => { const p = data.find((d) => d.period === `${m} n-1`)||{}; const c = data.find((d) => d.period === m)||{}; return { month:m, "n-1":p.oppoWon||0, n:c.oppoWon||0 }; });
   const quoteCompareData = MONTHS.map((m) => { const p = data.find((d) => d.period === `${m} n-1`)||{}; const c = data.find((d) => d.period === m)||{}; return { month:m, "n-1":p.quoteWon||0, n:c.quoteWon||0 }; });
@@ -255,9 +255,11 @@ function FunnelPageInner() {
         <div style={card}>
           <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:600, color:PBI.textPrimary }}>{`Funnel (${YEAR_N})`}</p>
           <p style={{ margin:"0 0 8px", fontSize:11, color:PBI.textMuted }}>Oppos → Quotes → Sales</p>
-          <ResponsiveContainer width="100%" height={340}>
-            <FunnelChart><Tooltip content={<PBITooltip />} /><Funnel dataKey="value" data={funnelData} isAnimationActive lastShapeType="rectangle"><LabelList position="right" fill={PBI.textPrimary} style={{ fontSize:11, fontFamily:PBI.font }} formatter={(v) => v.toLocaleString()} /></Funnel></FunnelChart>
-          </ResponsiveContainer>
+          <div style={{ maxWidth:420, margin:"0 auto", overflow:"visible" }}>
+            <ResponsiveContainer width="100%" height={340}>
+              <FunnelChart><Tooltip content={<PBITooltip />} /><Funnel dataKey="value" data={funnelData} isAnimationActive lastShapeType="rectangle"><LabelList position="right" fill={PBI.textPrimary} style={{ fontSize:11, fontFamily:PBI.font }} formatter={(v) => v.toLocaleString()} /></Funnel></FunnelChart>
+            </ResponsiveContainer>
+          </div>
           <div style={{ display:"flex", justifyContent:"space-around", marginTop:8 }}>
             {[{label:"Oppos→Quotes",rate:oqRateN,color:PBI.colors[0]},{label:"Quotes→Sales",rate:qsRateN,color:PBI.colors[7]}].map(({label,rate,color}) => (
               <div key={label} style={{ textAlign:"center" }}><p style={{ margin:0, fontSize:20, fontWeight:700, color }}>{rate}%</p><p style={{ margin:"2px 0 0", fontSize:10, color:PBI.textMuted }}>{label}</p></div>

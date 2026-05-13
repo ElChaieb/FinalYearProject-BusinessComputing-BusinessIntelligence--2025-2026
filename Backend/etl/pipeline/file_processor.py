@@ -3,13 +3,14 @@
 Main ETL entry point for a single xlsx file.
 
 Flow:
-  1. Load OP + DEVIS sheets (calamine engine preferred; openpyxl fallback)
+  1. Load OP + DEVIS + SALES sheets (calamine engine preferred; openpyxl fallback)
   2. Schema validation  → reject immediately if required columns missing
   3. Parse users        → dim_user
   4. Parse vehicles     → dim_vehicle
   5. Parse opportunities → fact_opportunities  (calls get_or_create_client internally)
-  6. Parse quotes       → fact_quotes  + fake sales → fact_sales
-  7. Move file to processed/ or rejected/
+  6. Parse quotes       → fact_quotes  (deleted flag driven by SALES sheet)
+  7. Parse sales        → fact_sales   (from pre-generated SALES sheet)
+  8. Move file to processed/ or rejected/
 
 ID strategy summary:
   - user_id  : taken directly from source (Oppo_AssignedUserId / User_UserId)
@@ -32,6 +33,7 @@ from etl.pipeline.parsers.parse_users         import parse_and_load_users
 from etl.pipeline.parsers.parse_vehicles      import parse_and_load_vehicles
 from etl.pipeline.parsers.parse_opportunities import parse_and_load_opportunities
 from etl.pipeline.parsers.parse_quotes        import parse_and_load_quotes
+from etl.pipeline.parsers.parse_sales         import parse_and_load_sales
 from etl.utils.logger import logger
 
 # Add Backend directory to path for config import
@@ -46,6 +48,7 @@ REJECTED_DIR  = REJECTED_DIR_STR
 
 OP_SHEET    = "OP"
 DEVIS_SHEET = "DEVIS"
+SALES_SHEET = "SALES"
 
 
 def _load_sheet(filepath: str, sheet_name: str):
@@ -130,8 +133,8 @@ def process_file(filepath: str) -> dict:
         "vehicles":      {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
         "clients":       {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
         "opportunities": {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
-        "quotes":        {"total": 0, "inserted": 0, "skipped": 0, "errors": 0,
-                          "sales_generated": 0},
+        "quotes":        {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
+        "sales":         {"total": 0, "inserted": 0, "skipped": 0, "errors": 0},
         "status":        "success",
         "error":         None,
     }
@@ -149,12 +152,14 @@ def process_file(filepath: str) -> dict:
         # ── Load sheets ───────────────────────────────────────────────────
         df_op    = _load_sheet(filepath, OP_SHEET)
         df_devis = _load_sheet(filepath, DEVIS_SHEET)
+        df_sales = _load_sheet(filepath, SALES_SHEET)
 
         logger.info(f"  OP rows:    {len(df_op)    if df_op    is not None else 'MISSING'}")
         logger.info(f"  DEVIS rows: {len(df_devis) if df_devis is not None else 'MISSING'}")
+        logger.info(f"  SALES rows: {len(df_sales) if df_sales is not None else 'MISSING (fact_sales will be empty)'}")
 
         # ── Schema validation ─────────────────────────────────────────────
-        validation = validate_sheets(df_op, df_devis, filename)
+        validation = validate_sheets(df_op, df_devis, df_sales, filename)
         report["validation"] = {
             "errors":   validation["errors"],
             "warnings": validation["warnings"],
@@ -179,7 +184,8 @@ def process_file(filepath: str) -> dict:
         report["users"]         = parse_and_load_users(df_op, df_devis)
         report["vehicles"]      = parse_and_load_vehicles(df_devis)
         report["opportunities"] = parse_and_load_opportunities(df_op)
-        report["quotes"]        = parse_and_load_quotes(df_devis)
+        report["quotes"]        = parse_and_load_quotes(df_devis, df_sales=df_sales)
+        report["sales"]         = parse_and_load_sales(df_sales)
 
         logger.info(f"=== Done: {filename} ===")
 

@@ -24,7 +24,7 @@ const DASHBOARD_NAV = [
   { label: "Revenue", path: "/agency/revenue",    icon: RevenueIcon, roles: AGENCY_ROLES },
   { label: "Funnel",  path: "/agency/funnel",     icon: FunnelIcon,  roles: AGENCY_ROLES },
   { label: "Trends",  path: "/agency/trends",     icon: TrendsIcon,  roles: AGENCY_ROLES },
-  { label: "Revenue", path: "/commercial/revenue",icon: RevenueIcon, roles: COMMERCIAL_ROLES },
+  { label: "My Performance", path: "/commercial/revenue",icon: RevenueIcon, roles: COMMERCIAL_ROLES },
 ];
 
 const TOP_NAV = [

@@ -288,7 +288,7 @@ function CommercialRevenueInner() {
   return (
     <div style={{ background:PBI.pageBg, minHeight:"100vh", padding:"20px 24px", fontFamily:PBI.font }}>
       <div style={{ marginBottom:20 }}>
-        <h1 style={{ margin:0, fontSize:20, fontWeight:600, color:PBI.textPrimary }}>My Revenue</h1>
+        <h1 style={{ margin:0, fontSize:20, fontWeight:600, color:PBI.textPrimary }}>My Performance</h1>
         <p style={{ margin:"2px 0 0", fontSize:12, color:PBI.textMuted }}>{yearN} vs {yearNm1}</p>
       </div>
       <FilterBar style={{ marginBottom:14 }} />
