@@ -57,20 +57,16 @@ export function FilterProvider({ children }) {
 
   useEffect(() => {
     if (!selectedAgencyId) return;
-    fetchDashboard("/dashboard/global/revenue/by-agency", { year: selectedYear })
+    fetchDashboard("/dashboard/global/filters/commercials", { agency_name: selectedAgencyId })
       .then((result) => {
-        const comms = (result.rows ?? [])
-          .filter((r) => r.agency_name === selectedAgencyId)
-          .reduce((acc, r) => {
-            if (r.full_name && !acc.find((c) => c.id === String(r.user_id))) {
-              acc.push({ id: String(r.user_id ?? r.full_name), label: r.full_name });
-            }
-            return acc;
-          }, []);
+        const comms = (result.commercials ?? []).map((c) => ({
+          id: String(c.id),
+          label: c.name,
+        }));
         setAgencies((prev) => prev.map((a) => a.id === selectedAgencyId ? { ...a, commercials: comms } : a));
       })
       .catch(() => {});
-  }, [selectedAgencyId, selectedYear]);
+  }, [selectedAgencyId]); // year doesn't affect which commercials belong to an agency
 
   const selectedAgency     = agencies.find((a) => a.id === selectedAgencyId) ?? null;
   const selectedCommercial = selectedAgency?.commercials.find((c) => c.id === selectedCommercialId) ?? null;

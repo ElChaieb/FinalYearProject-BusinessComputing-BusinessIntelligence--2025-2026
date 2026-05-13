@@ -243,13 +243,16 @@ function TrendsPage() {
   const [expandedCats, setExpandedCats] = useState([]);
   const toggleCat = (id) => setExpandedCats((prev) => prev.includes(id) ? prev.filter((x) => x!==id) : [...prev,id]);
 
-  const { selectedYear } = useFilter();
+  const { selectedYear, selectedAgency, selectedCommercial } = useFilter();
   const yearN   = selectedYear;
   const yearNm1 = selectedYear - 1;
 
-  const { data: catData,           loading:l1, error:e1 } = useGlobalTrendsByCategory(selectedYear);
-  const { data: stateCurData,      loading:l2, error:e2 } = useGlobalTrendsClientsByState(selectedYear, CUR_MONTH_IDX+1);
-  const { data: statePrevData,     loading:l3, error:e3 } = useGlobalTrendsClientsByState(selectedYear, PREV_MONTH_IDX+1);
+  const agencyName   = selectedAgency?.id ?? null;
+  const commercialId = selectedCommercial?.id ? Number(selectedCommercial.id) : null;
+
+  const { data: catData,           loading:l1, error:e1 } = useGlobalTrendsByCategory(selectedYear, agencyName, commercialId);
+  const { data: stateCurData,      loading:l2, error:e2 } = useGlobalTrendsClientsByState(selectedYear, CUR_MONTH_IDX+1, agencyName, commercialId);
+  const { data: statePrevData,     loading:l3, error:e3 } = useGlobalTrendsClientsByState(selectedYear, PREV_MONTH_IDX+1, agencyName, commercialId);
 
   const categories = useMemo(() => buildCategories(catData?.rows ?? [], false), [catData]);
   const catTotals  = useMemo(() => categories.map((cat) => ({

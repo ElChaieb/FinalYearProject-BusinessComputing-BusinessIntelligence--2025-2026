@@ -148,22 +148,38 @@ def _category_model_revenue(year_n: int, extra_where: str = "", params: tuple = 
 @router.get("/global/revenue/monthly")
 def global_revenue_monthly(
     year: int = Query(default=None),
+    agency_name: Optional[str] = Query(default=None),
+    commercial_id: Optional[int] = Query(default=None),
     user=Depends(get_current_user),
 ):
     _require_global(user)
     year = year or date.today().year
-    rows = _monthly_revenue(year)
+    if commercial_id:
+        extra, params = _REV_WHERE_USER, (commercial_id,)
+    elif agency_name:
+        extra, params = _REV_WHERE_AGENCY, (agency_name,)
+    else:
+        extra, params = _REV_WHERE_GLOBAL, ()
+    rows = _monthly_revenue(year, extra, params)
     return {"year_n": year, "rows": rows}
 
 
 @router.get("/global/revenue/by-category")
 def global_revenue_by_category(
     year: int = Query(default=None),
+    agency_name: Optional[str] = Query(default=None),
+    commercial_id: Optional[int] = Query(default=None),
     user=Depends(get_current_user),
 ):
     _require_global(user)
     year = year or date.today().year
-    rows = _category_model_revenue(year)
+    if commercial_id:
+        extra, params = _REV_WHERE_USER, (commercial_id,)
+    elif agency_name:
+        extra, params = _REV_WHERE_AGENCY, (agency_name,)
+    else:
+        extra, params = _REV_WHERE_GLOBAL, ()
+    rows = _category_model_revenue(year, extra, params)
     return {"year_n": year, "rows": rows}
 
 
@@ -555,11 +571,19 @@ def _funnel_by_user(year_n: int, extra_where: str = "", params: tuple = ()):
 @router.get("/global/funnel/monthly")
 def global_funnel_monthly(
     year: int = Query(default=None),
+    agency_name: Optional[str] = Query(default=None),
+    commercial_id: Optional[int] = Query(default=None),
     user=Depends(get_current_user),
 ):
     _require_global(user)
     year = year or date.today().year
-    rows = _funnel_rows(year)
+    if commercial_id:
+        extra, params = "AND user_id = %s", (commercial_id,)
+    elif agency_name:
+        extra, params = "AND agency_name = %s", (agency_name,)
+    else:
+        extra, params = "", ()
+    rows = _funnel_rows(year, extra, params)
     return {"year_n": year, "rows": rows}
 
 
@@ -655,11 +679,19 @@ def _client_by_state(year_n: int, month: int, extra_where: str = "", params: tup
 @router.get("/global/trends/by-category")
 def global_trends_by_category(
     year: int = Query(default=None),
+    agency_name: Optional[str] = Query(default=None),
+    commercial_id: Optional[int] = Query(default=None),
     user=Depends(get_current_user),
 ):
     _require_global(user)
     year = year or date.today().year
-    rows = _category_model_units(year)
+    if commercial_id:
+        extra, params = "AND fs.user_id = %s", (commercial_id,)
+    elif agency_name:
+        extra, params = "AND fs.agency_name = %s", (agency_name,)
+    else:
+        extra, params = "", ()
+    rows = _category_model_units(year, extra, params)
     return {"year_n": year, "rows": rows}
 
 
@@ -667,6 +699,8 @@ def global_trends_by_category(
 def global_trends_clients_by_state(
     year: int = Query(default=None),
     month: int = Query(default=None),
+    agency_name: Optional[str] = Query(default=None),
+    commercial_id: Optional[int] = Query(default=None),
     user=Depends(get_current_user),
 ):
     """
@@ -677,7 +711,13 @@ def global_trends_clients_by_state(
     today = date.today()
     year  = year  or today.year
     month = month or today.month
-    rows  = _client_by_state(year, month)
+    if commercial_id:
+        extra, params = "AND fs.user_id = %s", (commercial_id,)
+    elif agency_name:
+        extra, params = "AND fs.agency_name = %s", (agency_name,)
+    else:
+        extra, params = "", ()
+    rows = _client_by_state(year, month, extra, params)
     return {"year_n": year, "month": month, "rows": rows}
 
 
@@ -733,6 +773,26 @@ def global_filters(user=Depends(get_current_user)):
         "agencies":   [r["agency_name"] for r in agencies],
         "years":      [r["yr"] for r in years],
     }
+
+
+@router.get("/global/filters/commercials")
+def global_filters_commercials(
+    agency_name: str = Query(...),
+    user=Depends(get_current_user),
+):
+    """Return the distinct commercials (user_id + full_name) who have sales in the given agency.
+    Called by FilterContext when the Director selects an agency from the filter bar."""
+    _require_global(user)
+    rows = _query(
+        """SELECT DISTINCT du.user_id,
+                  du.first_name || ' ' || du.last_name AS full_name
+           FROM fact_sales fs
+           JOIN dim_user du ON du.user_id = fs.user_id
+           WHERE fs.agency_name = %s
+           ORDER BY full_name""",
+        (agency_name,),
+    )
+    return {"commercials": [{"id": r["user_id"], "name": r["full_name"]} for r in rows]}
 
 
 @router.get("/agency/filters")

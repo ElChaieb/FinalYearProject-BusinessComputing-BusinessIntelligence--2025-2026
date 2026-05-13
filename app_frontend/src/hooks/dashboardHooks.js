@@ -31,39 +31,47 @@ export function paletteColor(idx) {
 //  DIRECTOR (global) hooks
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Build params object — only include agency/commercial when set */
+function _globalParams(year, agencyName, commercialId) {
+  const p = { year };
+  if (commercialId) p.commercial_id = commercialId;
+  else if (agencyName) p.agency_name = agencyName;
+  return p;
+}
+
 /** Monthly revenue totals + n-1 for all agencies combined */
-export function useGlobalRevenueMonthly(year = THIS_YEAR) {
-  return useDashboard("/dashboard/global/revenue/monthly", { year });
+export function useGlobalRevenueMonthly(year = THIS_YEAR, agencyName = null, commercialId = null) {
+  return useDashboard("/dashboard/global/revenue/monthly", _globalParams(year, agencyName, commercialId));
 }
 
 /** Category × model × month revenue breakdown */
-export function useGlobalRevenueByCategory(year = THIS_YEAR) {
-  return useDashboard("/dashboard/global/revenue/by-category", { year });
+export function useGlobalRevenueByCategory(year = THIS_YEAR, agencyName = null, commercialId = null) {
+  return useDashboard("/dashboard/global/revenue/by-category", _globalParams(year, agencyName, commercialId));
 }
 
-/** Per-agency monthly revenue (for donut cards) */
+/** Per-agency monthly revenue (for donut cards) — always unfiltered */
 export function useGlobalRevenueByAgency(year = THIS_YEAR) {
   return useDashboard("/dashboard/global/revenue/by-agency", { year });
 }
 
 /** Monthly funnel rows (oppo / quote / sale won & lost) */
-export function useGlobalFunnelMonthly(year = THIS_YEAR) {
-  return useDashboard("/dashboard/global/funnel/monthly", { year });
+export function useGlobalFunnelMonthly(year = THIS_YEAR, agencyName = null, commercialId = null) {
+  return useDashboard("/dashboard/global/funnel/monthly", _globalParams(year, agencyName, commercialId));
 }
 
-/** Per-agency yearly funnel totals (donut cards) */
+/** Per-agency yearly funnel totals (donut cards) — always unfiltered */
 export function useGlobalFunnelByAgency(year = THIS_YEAR) {
   return useDashboard("/dashboard/global/funnel/by-agency", { year });
 }
 
 /** Category × model × month units sold */
-export function useGlobalTrendsByCategory(year = THIS_YEAR) {
-  return useDashboard("/dashboard/global/trends/by-category", { year });
+export function useGlobalTrendsByCategory(year = THIS_YEAR, agencyName = null, commercialId = null) {
+  return useDashboard("/dashboard/global/trends/by-category", _globalParams(year, agencyName, commercialId));
 }
 
 /** Units sold per Tunisian governorate for a given month */
-export function useGlobalTrendsClientsByState(year = THIS_YEAR, month = new Date().getMonth() + 1) {
-  return useDashboard("/dashboard/global/trends/clients-by-state", { year, month });
+export function useGlobalTrendsClientsByState(year = THIS_YEAR, month = new Date().getMonth() + 1, agencyName = null, commercialId = null) {
+  return useDashboard("/dashboard/global/trends/clients-by-state", { ..._globalParams(year, agencyName, commercialId), month });
 }
 
 /** Filter options (categories, agencies, years) */
