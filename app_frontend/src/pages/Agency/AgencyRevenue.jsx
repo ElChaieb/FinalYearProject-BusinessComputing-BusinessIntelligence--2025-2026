@@ -148,13 +148,14 @@ function RevenueInner() {
   const [expandedCats,setExpandedCats] = useState([]);
   const toggleCat = (id) => setExpandedCats((prev)=>prev.includes(id)?prev.filter((x)=>x!==id):[...prev,id]);
 
-  const { selectedYear } = useFilter();
+  const { selectedYear, selectedCommercial } = useFilter();
+  const commercialId = selectedCommercial?.id ?? null;
   const yearN   = selectedYear;
   const yearNm1 = selectedYear - 1;
 
-  const {data:monthlyData,  loading:l1, error:e1} = useAgencyRevenueMonthly(selectedYear);
-  const {data:categoryData, loading:l2, error:e2} = useAgencyRevenueByCategory(selectedYear);
-  const {data:commData,     loading:l3, error:e3} = useAgencyRevenueByCommercial(selectedYear);
+  const {data:monthlyData,  loading:l1, error:e1} = useAgencyRevenueMonthly(selectedYear, commercialId);
+  const {data:categoryData, loading:l2, error:e2} = useAgencyRevenueByCategory(selectedYear, commercialId);
+  const {data:commData,     loading:l3, error:e3} = useAgencyRevenueByCommercial(selectedYear, commercialId);
 
   const monthlyTotals = useMemo(()=>{
     const rows=monthlyData?.rows??[];

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import api from "../api/axios";
 import Layout from "../components/Layout";
+import AIAnalysisPanel from "../components/AIAnalysisPanel";
 
 const STATUS = {
   IDLE: "idle",
@@ -351,6 +352,9 @@ export default function DataManagement() {
               </table>
             </div>
           )}
+
+          {/* ── AI Analysis Panel ── */}
+          <AIAnalysisPanel />
         </div>
     </Layout>
   );

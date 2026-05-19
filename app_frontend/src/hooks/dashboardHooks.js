@@ -83,32 +83,39 @@ export function useGlobalFilters() {
 //  AGENCY (agency-scoped) hooks
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function useAgencyRevenueMonthly(year = THIS_YEAR) {
-  return useDashboard("/dashboard/agency/revenue/monthly", { year });
+/** Build params object — only include commercial_id when set */
+function _agencyParams(year, commercialId) {
+  const p = { year };
+  if (commercialId) p.commercial_id = commercialId;
+  return p;
 }
 
-export function useAgencyRevenueByCategory(year = THIS_YEAR) {
-  return useDashboard("/dashboard/agency/revenue/by-category", { year });
+export function useAgencyRevenueMonthly(year = THIS_YEAR, commercialId = null) {
+  return useDashboard("/dashboard/agency/revenue/monthly", _agencyParams(year, commercialId));
 }
 
-export function useAgencyRevenueByCommercial(year = THIS_YEAR) {
-  return useDashboard("/dashboard/agency/revenue/by-commercial", { year });
+export function useAgencyRevenueByCategory(year = THIS_YEAR, commercialId = null) {
+  return useDashboard("/dashboard/agency/revenue/by-category", _agencyParams(year, commercialId));
 }
 
-export function useAgencyFunnelMonthly(year = THIS_YEAR) {
-  return useDashboard("/dashboard/agency/funnel/monthly", { year });
+export function useAgencyRevenueByCommercial(year = THIS_YEAR, commercialId = null) {
+  return useDashboard("/dashboard/agency/revenue/by-commercial", _agencyParams(year, commercialId));
 }
 
-export function useAgencyFunnelByCommercial(year = THIS_YEAR) {
-  return useDashboard("/dashboard/agency/funnel/by-commercial", { year });
+export function useAgencyFunnelMonthly(year = THIS_YEAR, commercialId = null) {
+  return useDashboard("/dashboard/agency/funnel/monthly", _agencyParams(year, commercialId));
 }
 
-export function useAgencyTrendsByCategory(year = THIS_YEAR) {
-  return useDashboard("/dashboard/agency/trends/by-category", { year });
+export function useAgencyFunnelByCommercial(year = THIS_YEAR, commercialId = null) {
+  return useDashboard("/dashboard/agency/funnel/by-commercial", _agencyParams(year, commercialId));
 }
 
-export function useAgencyTrendsClientsByState(year = THIS_YEAR, month = new Date().getMonth() + 1) {
-  return useDashboard("/dashboard/agency/trends/clients-by-state", { year, month });
+export function useAgencyTrendsByCategory(year = THIS_YEAR, commercialId = null) {
+  return useDashboard("/dashboard/agency/trends/by-category", _agencyParams(year, commercialId));
+}
+
+export function useAgencyTrendsClientsByState(year = THIS_YEAR, month = new Date().getMonth() + 1, commercialId = null) {
+  return useDashboard("/dashboard/agency/trends/clients-by-state", { ..._agencyParams(year, commercialId), month });
 }
 
 export function useAgencyFilters() {

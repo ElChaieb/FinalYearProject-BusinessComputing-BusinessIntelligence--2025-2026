@@ -113,12 +113,6 @@ logger = logging.getLogger("opdb_load")
 # =============================================================================
 
 def get_connection() -> pyodbc.Connection:
-    """
-    Returns an open pyodbc connection to the OperationalDB.
-
-    Supports both SQL Server auth (user + password) and Windows / trusted auth
-    (leave OPDB_USER empty to fall through to Trusted_Connection=yes).
-    """
     if OPDB_USER:
         conn_str = (
             f"DRIVER={{{OPDB_DRIVER}}};"
@@ -126,6 +120,7 @@ def get_connection() -> pyodbc.Connection:
             f"DATABASE={OPDB_NAME};"
             f"UID={OPDB_USER};"
             f"PWD={OPDB_PASSWORD};"
+            "TrustServerCertificate=yes;"   # ← add this line
         )
     else:
         conn_str = (
@@ -133,6 +128,7 @@ def get_connection() -> pyodbc.Connection:
             f"SERVER={OPDB_SERVER},{OPDB_PORT};"
             f"DATABASE={OPDB_NAME};"
             "Trusted_Connection=yes;"
+            "TrustServerCertificate=yes;"   # ← and this one
         )
     return pyodbc.connect(conn_str, autocommit=False)
 

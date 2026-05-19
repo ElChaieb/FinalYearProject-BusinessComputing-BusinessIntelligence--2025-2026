@@ -32,22 +32,22 @@ REJECTED_DIR_STR = str(REJECTED_DIR)
 LOGS_DIR_STR = str(LOGS_DIR)
 
 # ── Database Configuration ─────────────────────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:admin@localhost:5432/app_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:admin@postgres:5432/app_db")
 
 # ── Data Warehouse Configuration ───────────────────────────────────────────────
-DWH_HOST = os.getenv("DWH_HOST", "localhost")
+DWH_HOST = os.getenv("DWH_HOST", "postgres")
 DWH_PORT = int(os.getenv("DWH_PORT", 5432))
-DWH_NAME = os.getenv("DWH_NAME", "warehouse_v2")
+DWH_NAME = os.getenv("DWH_NAME", "warehouse_db")
 DWH_USER = os.getenv("DWH_USER", "admin")
 DWH_PASSWORD = os.getenv("DWH_PASSWORD", "admin")
 
 # ── Operational Database (SQL Server) Configuration ────────────────────────────
-OPDB_SERVER = os.getenv("OPDB_SERVER", "localhost")
+OPDB_SERVER = os.getenv("OPDB_SERVER", "sqlserver")
 OPDB_PORT = int(os.getenv("OPDB_PORT", 1433))
 OPDB_NAME = os.getenv("OPDB_NAME", "OperationalDB")
 OPDB_USER = os.getenv("OPDB_USER", "sa")
 OPDB_PASSWORD = os.getenv("OPDB_PASSWORD", "Password7@")
-OPDB_DRIVER = os.getenv("OPDB_DRIVER", "ODBC Driver 17 for SQL Server")
+OPDB_DRIVER = os.getenv("OPDB_DRIVER", "ODBC Driver 18 for SQL Server")
 
 # ── JWT Configuration ──────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")

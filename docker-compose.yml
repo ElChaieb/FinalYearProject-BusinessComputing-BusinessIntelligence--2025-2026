@@ -1,0 +1,92 @@
+services:
+  # --- Operational Database (Sage simulator) ---
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: pfe_OPDB
+    mem_limit: 2048m
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Password7@
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/opt/mssql-tools/bin/sqlcmd",
+          "-S",
+          "localhost",
+          "-U",
+          "sa",
+          "-P",
+          "Password7@",
+          "-Q",
+          "SELECT 1",
+        ]
+      interval: 15s
+      retries: 10
+      start_period: 30s
+
+  # --- Data Warehouse ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: pfe_DWH
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=warehouse_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d warehouse_db"]
+      interval: 10s
+      retries: 5
+
+  # --- FastAPI Backend ---
+  api:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.api
+    container_name: pfe_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://admin:admin@postgres:5432/app_db
+      - OPDB_CONN_STR=Driver={ODBC Driver 18 for SQL Server};Server=sqlserver,1433;Database=opdb;UID=sa;PWD=Password7@;TrustServerCertificate=yes
+      - OLLAMA_URL=http://ollama:11434
+    volumes:
+      - ./Backend/etl/rejected:/app/etl/rejected
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+  # --- React Frontend ---
+  frontend:
+    build:
+      context: ./app_frontend
+      dockerfile: Dockerfile.frontend
+    container_name: pfe_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_started
+
+  # --- Local LLM (Ollama) ---
+  ollama:
+    image: ollama/ollama
+    container_name: pfe_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  postgres_data:
+  ollama_data:

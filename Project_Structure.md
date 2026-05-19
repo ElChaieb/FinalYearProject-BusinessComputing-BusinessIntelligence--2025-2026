@@ -1,6 +1,6 @@
 # File Tree: app
 
-**Generated:** 5/17/2026, 9:27:58 PM
+**Generated:** 5/19/2026, 6:20:42 PM
 **Root Path:** `c:\Users\ElChaieb\Desktop\PFE\app`
 
 ```
@@ -20,8 +20,10 @@
 │   │   ├── routers
 │   │   │   ├── __init__.py
 │   │   │   ├── admin.py
+│   │   │   ├── ai_analysis.py
 │   │   │   ├── auth.py
-│   │   │   └── dashboard.py
+│   │   │   ├── dashboard.py
+│   │   │   └── dw_chat_router.py
 │   │   ├── utils
 │   │   │   ├── __init__.py
 │   │   │   └── email.py
@@ -58,6 +60,7 @@
 │   │   │   ├── db.py
 │   │   │   └── logger.py
 │   │   └── __init__.py
+│   ├── Dockerfile.api
 │   └── requirements.txt
 ├── PFE_2026
 │   ├── OPDB.sql
@@ -66,17 +69,20 @@
 │   └── dwh.sql
 ├── app_frontend
 │   ├── public
+│   │   └── Zouari.png
 │   ├── src
 │   │   ├── api
 │   │   │   ├── axios.js
 │   │   │   └── dashboardApi.js
 │   │   ├── assets
 │   │   ├── components
+│   │   │   ├── AIAnalysisPanel.jsx
 │   │   │   ├── AgencyFilterContext.jsx
 │   │   │   ├── AgencyFilterContext_states.jsx
 │   │   │   ├── Charts.jsx
 │   │   │   ├── CommercialFilterContext.jsx
 │   │   │   ├── CommercialFilterContext_states.jsx
+│   │   │   ├── DWChatPanel.jsx
 │   │   │   ├── FilterContext.jsx
 │   │   │   ├── FilterContext_states.jsx
 │   │   │   ├── Layout.jsx
@@ -96,6 +102,7 @@
 │   │   │   ├── Commercial
 │   │   │   │   └── CommercialRevenue.jsx
 │   │   │   ├── Directors
+│   │   │   │   ├── DirectorChat.jsx
 │   │   │   │   ├── DirectorFunnel.jsx
 │   │   │   │   ├── DirectorRevenue.jsx
 │   │   │   │   └── DirectorTrends.jsx
@@ -108,11 +115,14 @@
 │   │   ├── index.css
 │   │   └── main.jsx
 │   ├── .gitignore
+│   ├── Dockerfile.frontend
 │   ├── README.md
 │   ├── eslint.config.js
 │   ├── index.html
+│   ├── nginx.conf
 │   ├── package-lock.json
 │   ├── package.json
+│   ├── src.zip
 │   └── vite.config.js
 ├── etl
 │   └── logs
@@ -120,6 +130,7 @@
 │   └── logs
 ├── .gitignore
 ├── README.md
+├── docker-compose.yml
 └── run_instructions.txt
 ```
 

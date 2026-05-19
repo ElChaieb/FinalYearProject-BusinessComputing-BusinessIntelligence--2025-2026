@@ -5,11 +5,18 @@ from app.routers import auth, admin
 from app.auth import get_current_user
 from app.routers import dashboard
 
+from app.routers.ai_analysis import router as ai_router
+from app.routers.dw_chat_router import router as dw_chat_router
+
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost",       # Docker frontend (port 80)
+        "http://localhost:5173",  # Vite dev server (local dev)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -18,7 +25,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(dashboard.router)
-
+app.include_router(ai_router)
+app.include_router(dw_chat_router)
 
 @app.get("/")
 def root():

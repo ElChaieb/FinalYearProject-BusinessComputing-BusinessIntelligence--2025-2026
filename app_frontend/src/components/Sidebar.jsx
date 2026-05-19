@@ -20,7 +20,8 @@ const COMMERCIAL_ROLES = ["Commercial"];
 const DASHBOARD_NAV = [
   { label: "Revenue", path: "/directors/revenue", icon: RevenueIcon, roles: DIRECTOR_ROLES },
   { label: "Funnel",  path: "/directors/funnel",  icon: FunnelIcon,  roles: DIRECTOR_ROLES },
-  { label: "Trends",  path: "/directors/trends",  icon: TrendsIcon,  roles: DIRECTOR_ROLES },
+  { label: "Trends",        path: "/directors/trends", icon: TrendsIcon, roles: DIRECTOR_ROLES },
+  { label: "Data Assistant", path: "/directors/chat",  icon: ChatIcon,   roles: DIRECTOR_ROLES },
   { label: "Revenue", path: "/agency/revenue",    icon: RevenueIcon, roles: AGENCY_ROLES },
   { label: "Funnel",  path: "/agency/funnel",     icon: FunnelIcon,  roles: AGENCY_ROLES },
   { label: "Trends",  path: "/agency/trends",     icon: TrendsIcon,  roles: AGENCY_ROLES },
@@ -309,6 +310,15 @@ function ProfileIcon() {
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
       <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.4"/>
       <path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function ChatIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M2 2h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 3V3a1 1 0 0 1 1-1z"
+        stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M5 6h6M5 8.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".5"/>
     </svg>
   );
 }

@@ -488,7 +488,8 @@ const DonutCard = ({ title, commercials, valueKey }) => {
 };
 
 function FunnelPageInner() {
-  const { selectedYear } = useFilter();
+  const { selectedYear, selectedCommercial } = useFilter();
+  const commercialId = selectedCommercial?.id ?? null;
   const YEAR_N = selectedYear;
   const YEAR_NM1 = selectedYear - 1;
 
@@ -496,12 +497,12 @@ function FunnelPageInner() {
     data: funnelMonthly,
     loading: l1,
     error: e1,
-  } = useAgencyFunnelMonthly(selectedYear);
+  } = useAgencyFunnelMonthly(selectedYear, commercialId);
   const {
     data: funnelComm,
     loading: l2,
     error: e2,
-  } = useAgencyFunnelByCommercial(selectedYear);
+  } = useAgencyFunnelByCommercial(selectedYear, commercialId);
 
   const data = useMemo(
     () => buildFunnelData(funnelMonthly?.rows ?? []),

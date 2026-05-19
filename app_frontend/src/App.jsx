@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import DirectorRevenue from "./pages/Directors/DirectorRevenue";
 import DirectorFunnel from "./pages/Directors/DirectorFunnel";
 import DirectorTrends from "./pages/Directors/DirectorTrends";
+import DirectorChat from "./pages/Directors/DirectorChat";
 
 // Agency dashboard pages
 import AgencyRevenue from "./pages/Agency/AgencyRevenue";
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/directors/revenue" element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorRevenue /></ProtectedRoute>} />
             <Route path="/directors/funnel"  element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorFunnel /></ProtectedRoute>} />
             <Route path="/directors/trends"  element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorTrends /></ProtectedRoute>} />
+            <Route path="/directors/chat"    element={<ProtectedRoute allowedRoles={DIRECTOR_ROLES}><DirectorChat /></ProtectedRoute>} />
 
             {/* Agency dashboard — Agency Manager */}
             <Route path="/agency/revenue" element={<ProtectedRoute allowedRoles={AGENCY_ROLES}><AgencyRevenue /></ProtectedRoute>} />

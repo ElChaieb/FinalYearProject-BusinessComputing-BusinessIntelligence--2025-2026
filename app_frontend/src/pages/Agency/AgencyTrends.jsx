@@ -113,13 +113,14 @@ const TrendsTable = ({categories,expandedCats,toggleCat,yearN,yearNm1}) => {
 function TrendsPage() {
   const [expandedCats,setExpandedCats]=useState([]);
   const toggleCat=(id)=>setExpandedCats((prev)=>prev.includes(id)?prev.filter((x)=>x!==id):[...prev,id]);
-  const { selectedYear } = useFilter();
+  const { selectedYear, selectedCommercial } = useFilter();
+  const commercialId = selectedCommercial?.id ?? null;
   const yearN   = selectedYear;
   const yearNm1 = selectedYear - 1;
 
-  const {data:catData,   loading:l1,error:e1}=useAgencyTrendsByCategory(selectedYear);
-  const {data:stateCur,  loading:l2}           =useAgencyTrendsClientsByState(selectedYear,CUR_MONTH_IDX+1);
-  const {data:statePrev, loading:l3}           =useAgencyTrendsClientsByState(selectedYear,PREV_MONTH_IDX+1);
+  const {data:catData,   loading:l1,error:e1}=useAgencyTrendsByCategory(selectedYear, commercialId);
+  const {data:stateCur,  loading:l2}           =useAgencyTrendsClientsByState(selectedYear,CUR_MONTH_IDX+1, commercialId);
+  const {data:statePrev, loading:l3}           =useAgencyTrendsClientsByState(selectedYear,PREV_MONTH_IDX+1, commercialId);
   const categories=useMemo(()=>buildCategories(catData?.rows??[],false),[catData]);
   const catTotals =useMemo(()=>categories.map((cat)=>({id:cat.id,label:cat.label,color:cat.color,n:cat.models.flatMap((m)=>m.months).reduce((s,mo)=>s+(mo.n??0),0),nM1:cat.models.flatMap((m)=>m.months).reduce((s,mo)=>s+(mo.nMinus1??0),0)})),[categories]);
   const allModels =useMemo(()=>categories.flatMap((c)=>c.models),[categories]);
