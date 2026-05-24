@@ -1,8 +1,9 @@
-// context/SidebarContext.jsx
+// Sidebar open/close state and toggle helper provided to the app
 import { createContext, useContext, useState } from "react";
 
 const SidebarContext = createContext(null);
 
+// Provide `isOpen` and `toggle()` to control the sidebar visibility
 export function SidebarProvider({ children }) {
   const [isOpen, setIsOpen] = useState(() => {
     try {
@@ -13,10 +14,13 @@ export function SidebarProvider({ children }) {
     }
   });
 
+  // Toggle sidebar state and persist preference to localStorage
   function toggle() {
     setIsOpen((prev) => {
       const next = !prev;
-      try { localStorage.setItem("sidebar_open", String(next)); } catch {}
+      try {
+        localStorage.setItem("sidebar_open", String(next));
+      } catch {}
       return next;
     });
   }
@@ -28,6 +32,7 @@ export function SidebarProvider({ children }) {
   );
 }
 
+// Hook to access sidebar state and toggle action
 export function useSidebar() {
   const ctx = useContext(SidebarContext);
   if (!ctx) throw new Error("useSidebar must be used within <SidebarProvider>");

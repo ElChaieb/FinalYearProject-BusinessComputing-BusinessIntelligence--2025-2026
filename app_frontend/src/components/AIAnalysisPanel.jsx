@@ -2,6 +2,7 @@
 import { useState } from "react";
 import axiosInstance from "../api/axios";
 
+// Panel that triggers AI analysis of rejected files and displays results
 export default function AIAnalysisPanel() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -29,7 +30,10 @@ export default function AIAnalysisPanel() {
           <span className="ai-icon">🤖</span>
           <div>
             <h3>AI Data Quality Assistant</h3>
-            <p>Analyzes rejected files and explains what went wrong in plain language.</p>
+            <p>
+              Analyzes rejected files and explains what went wrong in plain
+              language.
+            </p>
           </div>
         </div>
         <button
@@ -69,13 +73,11 @@ export default function AIAnalysisPanel() {
                 rejected file{result.total_rejected !== 1 ? "s" : ""} analyzed
               </div>
               <div className="ai-analysis-text">
-                {result.analysis.split("\n").map((line, i) =>
-                  line.trim() === "" ? (
-                    <br key={i} />
-                  ) : (
-                    <p key={i}>{line}</p>
-                  )
-                )}
+                {result.analysis
+                  .split("\n")
+                  .map((line, i) =>
+                    line.trim() === "" ? <br key={i} /> : <p key={i}>{line}</p>,
+                  )}
               </div>
             </>
           )}

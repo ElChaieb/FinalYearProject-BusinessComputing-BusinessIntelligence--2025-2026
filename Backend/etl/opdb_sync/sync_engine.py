@@ -81,16 +81,18 @@ def _sync_users(opdb_cur, dwh_cur) -> dict:
         )
         for r in new_rows
     ]
-    execute_values(
+    rows_inserted = execute_values(
         dwh_cur,
         """
         INSERT INTO dim_user (user_id, last_name, first_name, email, role, agency_name)
         VALUES %s
         ON CONFLICT (user_id) DO NOTHING
+        RETURNING user_id
         """,
         values,
+        fetch=True,
     )
-    inserted = dwh_cur.rowcount
+    inserted = len(rows_inserted)
     return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
@@ -124,16 +126,18 @@ def _sync_vehicles(opdb_cur, dwh_cur) -> dict:
         )
         for r in new_rows
     ]
-    execute_values(
+    rows_inserted = execute_values(
         dwh_cur,
         """
         INSERT INTO dim_vehicle (ar_ref, ar_design, brand, model, category, base_price)
         VALUES %s
         ON CONFLICT (ar_ref) DO NOTHING
+        RETURNING ar_ref
         """,
         values,
+        fetch=True,
     )
-    inserted = dwh_cur.rowcount
+    inserted = len(rows_inserted)
     return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
@@ -169,16 +173,18 @@ def _sync_clients(opdb_cur, dwh_cur) -> dict:
         )
         for r in new_rows
     ]
-    execute_values(
+    rows_inserted = execute_values(
         dwh_cur,
         """
         INSERT INTO dim_client (client_id, full_name, email, city)
         VALUES %s
         ON CONFLICT (client_id) DO NOTHING
+        RETURNING client_id
         """,
         values,
+        fetch=True,
     )
-    inserted = dwh_cur.rowcount
+    inserted = len(rows_inserted)
 
     # Keep the SERIAL sequence ahead of the highest inserted ID
     dwh_cur.execute(
@@ -231,7 +237,7 @@ def _sync_opportunities(opdb_cur, dwh_cur) -> dict:
         )
         for r in new_rows
     ]
-    execute_values(
+    rows_inserted = execute_values(
         dwh_cur,
         """
         INSERT INTO fact_opportunities
@@ -239,10 +245,12 @@ def _sync_opportunities(opdb_cur, dwh_cur) -> dict:
              created_date, client_reference, deleted)
         VALUES %s
         ON CONFLICT (oppo_id) DO NOTHING
+        RETURNING oppo_id
         """,
         values,
+        fetch=True,
     )
-    inserted = dwh_cur.rowcount
+    inserted = len(rows_inserted)
     return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
@@ -282,7 +290,7 @@ def _sync_quotes(opdb_cur, dwh_cur) -> dict:
         )
         for r in new_rows
     ]
-    execute_values(
+    rows_inserted = execute_values(
         dwh_cur,
         """
         INSERT INTO fact_quotes
@@ -290,10 +298,12 @@ def _sync_quotes(opdb_cur, dwh_cur) -> dict:
              agency_name, price, created_date, deleted)
         VALUES %s
         ON CONFLICT (quote_id) DO NOTHING
+        RETURNING quote_id
         """,
         values,
+        fetch=True,
     )
-    inserted = dwh_cur.rowcount
+    inserted = len(rows_inserted)
     return {"inserted": inserted, "skipped": len(rows) - inserted}
 
 
@@ -334,7 +344,7 @@ def _sync_sales(opdb_cur, dwh_cur) -> dict:
         )
         for r in new_rows
     ]
-    execute_values(
+    rows_inserted = execute_values(
         dwh_cur,
         """
         INSERT INTO fact_sales
@@ -342,10 +352,12 @@ def _sync_sales(opdb_cur, dwh_cur) -> dict:
              ar_ref, agency_name, sale_date, quantity, final_price)
         VALUES %s
         ON CONFLICT (sale_id) DO NOTHING
+        RETURNING sale_id
         """,
         values,
+        fetch=True,
     )
-    inserted = dwh_cur.rowcount
+    inserted = len(rows_inserted)
 
     # Keep the SERIAL sequence ahead of the highest synced sale_id
     # to avoid conflicts on any future auto-generated inserts

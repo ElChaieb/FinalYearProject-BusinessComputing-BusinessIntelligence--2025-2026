@@ -1,11 +1,21 @@
+// Charts.jsx contains reusable Recharts wrappers and chart helper components used across dashboards
 import {
-  BarChart, Bar,
-  LineChart, Line,
-  AreaChart, Area,
-  PieChart, Pie, Cell,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
   ComposedChart,
-  XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from "recharts";
 
 // ─── Power BI design tokens ───────────────────────────────────────────────────
@@ -20,14 +30,14 @@ const PBI = {
     "#D13438", // red
     "#107C10", // green
   ],
-  bg:          "#FFFFFF",
-  cardBg:      "#FFFFFF",
-  pageBg:      "#F3F2F1",
-  border:      "#E1DFDD",
+  bg: "#FFFFFF",
+  cardBg: "#FFFFFF",
+  pageBg: "#F3F2F1",
+  border: "#E1DFDD",
   textPrimary: "#252423",
-  textMuted:   "#605E5C",
-  gridLine:    "#E1DFDD",
-  font:        "'Segoe UI', 'Segoe UI Web (West European)', sans-serif",
+  textMuted: "#605E5C",
+  gridLine: "#E1DFDD",
+  font: "'Segoe UI', 'Segoe UI Web (West European)', sans-serif",
 };
 
 // ─── Shared card wrapper ──────────────────────────────────────────────────────
@@ -56,18 +66,19 @@ const subtitleStyle = {
 
 // ─── Shared axis / grid props ─────────────────────────────────────────────────
 const axisProps = {
-  tick:        { fontSize: 11, fill: PBI.textMuted, fontFamily: PBI.font },
-  axisLine:    { stroke: PBI.border },
-  tickLine:    false,
+  tick: { fontSize: 11, fill: PBI.textMuted, fontFamily: PBI.font },
+  axisLine: { stroke: PBI.border },
+  tickLine: false,
 };
 
 const gridProps = {
-  stroke:          PBI.gridLine,
-  strokeDasharray: "0",         // Power BI uses solid hairlines, not dashes
-  vertical:        false,
+  stroke: PBI.gridLine,
+  strokeDasharray: "0", // Power BI uses solid hairlines, not dashes
+  vertical: false,
 };
 
 // ─── Custom tooltip ───────────────────────────────────────────────────────────
+// Custom tooltip styled to match Power BI visuals
 const PBITooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -83,7 +94,9 @@ const PBITooltip = ({ active, payload, label }) => {
       }}
     >
       {label && (
-        <p style={{ margin: "0 0 6px", fontWeight: 600, color: PBI.textPrimary }}>
+        <p
+          style={{ margin: "0 0 6px", fontWeight: 600, color: PBI.textPrimary }}
+        >
           {label}
         </p>
       )}
@@ -98,6 +111,7 @@ const PBITooltip = ({ active, payload, label }) => {
 };
 
 // ─── Custom legend ────────────────────────────────────────────────────────────
+// Custom legend for small inline legends below charts
 const PBILegend = ({ payload }) => (
   <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
     {payload.map((entry, i) => (
@@ -129,11 +143,12 @@ const PBILegend = ({ payload }) => (
 );
 
 // ─── Custom pie label ─────────────────────────────────────────────────────────
+// Render labels around pie/donut slices when space allows
 const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name }) => {
   const RADIAN = Math.PI / 180;
-  const r  = outerRadius + 22;
-  const x  = cx + r * Math.cos(-midAngle * RADIAN);
-  const y  = cy + r * Math.sin(-midAngle * RADIAN);
+  const r = outerRadius + 22;
+  const x = cx + r * Math.cos(-midAngle * RADIAN);
+  const y = cy + r * Math.sin(-midAngle * RADIAN);
   if (percent < 0.05) return null;
   return (
     <text
@@ -162,22 +177,42 @@ const renderPieLabel = ({ cx, cy, midAngle, outerRadius, percent, name }) => {
  * @param {string[]} yKeys      - Keys for the bars (one bar per key)
  * @param {number}   [height]   - Chart height in px (default 260)
  */
-export function PBIBarChart({ title, subtitle, data, xKey, yKeys, height = 260 }) {
+// Bar chart component matching the dashboard visual style
+export function PBIBarChart({
+  title,
+  subtitle,
+  data,
+  xKey,
+  yKeys,
+  height = 260,
+}) {
   return (
     <div style={cardStyle}>
-      {title    && <p style={titleStyle}>{title}</p>}
+      {title && <p style={titleStyle}>{title}</p>}
       {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={data} barCategoryGap="35%" barGap={3}
-          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+        <BarChart
+          data={data}
+          barCategoryGap="35%"
+          barGap={3}
+          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
+        >
           <CartesianGrid {...gridProps} />
           <XAxis dataKey={xKey} {...axisProps} />
           <YAxis {...axisProps} />
-          <Tooltip content={<PBITooltip />} cursor={{ fill: "rgba(17,141,255,.06)" }} />
+          <Tooltip
+            content={<PBITooltip />}
+            cursor={{ fill: "rgba(17,141,255,.06)" }}
+          />
           <Legend content={<PBILegend />} />
           {yKeys.map((key, i) => (
-            <Bar key={key} dataKey={key} fill={PBI.colors[i % PBI.colors.length]}
-              radius={[2, 2, 0, 0]} maxBarSize={48} />
+            <Bar
+              key={key}
+              dataKey={key}
+              fill={PBI.colors[i % PBI.colors.length]}
+              radius={[2, 2, 0, 0]}
+              maxBarSize={48}
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -198,24 +233,43 @@ export function PBIBarChart({ title, subtitle, data, xKey, yKeys, height = 260 }
  * @param {string[]} yKeys
  * @param {number}   [height]
  */
-export function PBILineChart({ title, subtitle, data, xKey, yKeys, height = 260 }) {
+// Line chart component matching the dashboard visual style
+export function PBILineChart({
+  title,
+  subtitle,
+  data,
+  xKey,
+  yKeys,
+  height = 260,
+}) {
   return (
     <div style={cardStyle}>
-      {title    && <p style={titleStyle}>{title}</p>}
+      {title && <p style={titleStyle}>{title}</p>}
       {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+        <LineChart
+          data={data}
+          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
+        >
           <CartesianGrid {...gridProps} />
           <XAxis dataKey={xKey} {...axisProps} />
           <YAxis {...axisProps} />
           <Tooltip content={<PBITooltip />} />
           <Legend content={<PBILegend />} />
           {yKeys.map((key, i) => (
-            <Line key={key} type="linear" dataKey={key}
+            <Line
+              key={key}
+              type="linear"
+              dataKey={key}
               stroke={PBI.colors[i % PBI.colors.length]}
               strokeWidth={2.5}
-              dot={{ r: 3, fill: PBI.colors[i % PBI.colors.length], strokeWidth: 0 }}
-              activeDot={{ r: 5 }} />
+              dot={{
+                r: 3,
+                fill: PBI.colors[i % PBI.colors.length],
+                strokeWidth: 0,
+              }}
+              activeDot={{ r: 5 }}
+            />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -237,18 +291,45 @@ export function PBILineChart({ title, subtitle, data, xKey, yKeys, height = 260 
  * @param {boolean}  [stacked]  - Stack areas (default false)
  * @param {number}   [height]
  */
-export function PBIAreaChart({ title, subtitle, data, xKey, yKeys, stacked = false, height = 260 }) {
+// Area chart component; supports optional stacking
+export function PBIAreaChart({
+  title,
+  subtitle,
+  data,
+  xKey,
+  yKeys,
+  stacked = false,
+  height = 260,
+}) {
   return (
     <div style={cardStyle}>
-      {title    && <p style={titleStyle}>{title}</p>}
+      {title && <p style={titleStyle}>{title}</p>}
       {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
+        >
           <defs>
             {yKeys.map((key, i) => (
-              <linearGradient key={key} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={PBI.colors[i % PBI.colors.length]} stopOpacity={0.18} />
-                <stop offset="95%" stopColor={PBI.colors[i % PBI.colors.length]} stopOpacity={0.02} />
+              <linearGradient
+                key={key}
+                id={`grad-${key}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="5%"
+                  stopColor={PBI.colors[i % PBI.colors.length]}
+                  stopOpacity={0.18}
+                />
+                <stop
+                  offset="95%"
+                  stopColor={PBI.colors[i % PBI.colors.length]}
+                  stopOpacity={0.02}
+                />
               </linearGradient>
             ))}
           </defs>
@@ -258,13 +339,21 @@ export function PBIAreaChart({ title, subtitle, data, xKey, yKeys, stacked = fal
           <Tooltip content={<PBITooltip />} />
           <Legend content={<PBILegend />} />
           {yKeys.map((key, i) => (
-            <Area key={key} type="linear" dataKey={key}
+            <Area
+              key={key}
+              type="linear"
+              dataKey={key}
               stroke={PBI.colors[i % PBI.colors.length]}
               strokeWidth={2.5}
               fill={`url(#grad-${key})`}
               stackId={stacked ? "stack" : undefined}
-              dot={{ r: 3, fill: PBI.colors[i % PBI.colors.length], strokeWidth: 0 }}
-              activeDot={{ r: 5 }} />
+              dot={{
+                r: 3,
+                fill: PBI.colors[i % PBI.colors.length],
+                strokeWidth: 0,
+              }}
+              activeDot={{ r: 5 }}
+            />
           ))}
         </AreaChart>
       </ResponsiveContainer>
@@ -284,11 +373,18 @@ export function PBIAreaChart({ title, subtitle, data, xKey, yKeys, stacked = fal
  * @param {boolean} [donut]    - Render as donut (default true)
  * @param {number}  [height]
  */
-export function PBIPieChart({ title, subtitle, data, donut = true, height = 280 }) {
+// Pie/donut chart component with manual legend
+export function PBIPieChart({
+  title,
+  subtitle,
+  data,
+  donut = true,
+  height = 280,
+}) {
   const inner = donut ? "52%" : "0%";
   return (
     <div style={cardStyle}>
-      {title    && <p style={titleStyle}>{title}</p>}
+      {title && <p style={titleStyle}>{title}</p>}
       {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
       <ResponsiveContainer width="100%" height={height}>
         <PieChart>
@@ -304,7 +400,11 @@ export function PBIPieChart({ title, subtitle, data, donut = true, height = 280 
             label={renderPieLabel}
           >
             {data.map((_, i) => (
-              <Cell key={i} fill={PBI.colors[i % PBI.colors.length]} stroke="none" />
+              <Cell
+                key={i}
+                fill={PBI.colors[i % PBI.colors.length]}
+                stroke="none"
+              />
             ))}
           </Pie>
           <Tooltip content={<PBITooltip />} />
@@ -313,10 +413,26 @@ export function PBIPieChart({ title, subtitle, data, donut = true, height = 280 
       {/* manual legend below the chart */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
         {data.map((entry, i) => (
-          <span key={i} style={{ display: "flex", alignItems: "center", gap: 5,
-            fontSize: 11, color: PBI.textMuted, fontFamily: PBI.font }}>
-            <span style={{ width: 10, height: 10, borderRadius: 1,
-              background: PBI.colors[i % PBI.colors.length], display: "inline-block" }} />
+          <span
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: 11,
+              color: PBI.textMuted,
+              fontFamily: PBI.font,
+            }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 1,
+                background: PBI.colors[i % PBI.colors.length],
+                display: "inline-block",
+              }}
+            />
             {entry.name}
           </span>
         ))}
@@ -339,32 +455,59 @@ export function PBIPieChart({ title, subtitle, data, donut = true, height = 280 
  * @param {string[]} lineKeys   - Keys rendered as lines on top
  * @param {number}   [height]
  */
-export function PBIComposedChart({ title, subtitle, data, xKey, barKeys, lineKeys, height = 280 }) {
-  const allKeys   = [...barKeys, ...lineKeys];
-  const lineStart = barKeys.length;              // color offset for lines
+// Composed chart combining bars and overlayed lines
+export function PBIComposedChart({
+  title,
+  subtitle,
+  data,
+  xKey,
+  barKeys,
+  lineKeys,
+  height = 280,
+}) {
+  const allKeys = [...barKeys, ...lineKeys];
+  const lineStart = barKeys.length; // color offset for lines
   return (
     <div style={cardStyle}>
-      {title    && <p style={titleStyle}>{title}</p>}
+      {title && <p style={titleStyle}>{title}</p>}
       {subtitle && <p style={subtitleStyle}>{subtitle}</p>}
       <ResponsiveContainer width="100%" height={height}>
-        <ComposedChart data={data} barCategoryGap="35%"
-          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+        <ComposedChart
+          data={data}
+          barCategoryGap="35%"
+          margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
+        >
           <CartesianGrid {...gridProps} />
           <XAxis dataKey={xKey} {...axisProps} />
           <YAxis {...axisProps} />
-          <Tooltip content={<PBITooltip />} cursor={{ fill: "rgba(17,141,255,.06)" }} />
+          <Tooltip
+            content={<PBITooltip />}
+            cursor={{ fill: "rgba(17,141,255,.06)" }}
+          />
           <Legend content={<PBILegend />} />
           {barKeys.map((key, i) => (
-            <Bar key={key} dataKey={key}
+            <Bar
+              key={key}
+              dataKey={key}
               fill={PBI.colors[i % PBI.colors.length]}
-              radius={[2, 2, 0, 0]} maxBarSize={48} />
+              radius={[2, 2, 0, 0]}
+              maxBarSize={48}
+            />
           ))}
           {lineKeys.map((key, i) => (
-            <Line key={key} type="linear" dataKey={key}
+            <Line
+              key={key}
+              type="linear"
+              dataKey={key}
               stroke={PBI.colors[(lineStart + i) % PBI.colors.length]}
               strokeWidth={2.5}
-              dot={{ r: 3, fill: PBI.colors[(lineStart + i) % PBI.colors.length], strokeWidth: 0 }}
-              activeDot={{ r: 5 }} />
+              dot={{
+                r: 3,
+                fill: PBI.colors[(lineStart + i) % PBI.colors.length],
+                strokeWidth: 0,
+              }}
+              activeDot={{ r: 5 }}
+            />
           ))}
         </ComposedChart>
       </ResponsiveContainer>
@@ -383,18 +526,33 @@ export function PBIComposedChart({ title, subtitle, data, xKey, barKeys, lineKey
  * @param {string} [trend]   - e.g. "+12.4%" shown in green/red
  * @param {string} [trendDir] - "up" | "down" (controls color)
  */
+// Simple KPI card component for single-number highlights
 export function PBICard({ label, value, trend, trendDir = "up" }) {
   const trendColor = trendDir === "up" ? "#107C10" : "#D13438";
   return (
     <div style={{ ...cardStyle, padding: "16px 20px" }}>
       <p style={{ ...subtitleStyle, marginBottom: 6 }}>{label}</p>
-      <p style={{ margin: 0, fontSize: 28, fontWeight: 600,
-        color: PBI.textPrimary, fontFamily: PBI.font, lineHeight: 1.2 }}>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 28,
+          fontWeight: 600,
+          color: PBI.textPrimary,
+          fontFamily: PBI.font,
+          lineHeight: 1.2,
+        }}
+      >
         {value}
       </p>
       {trend && (
-        <p style={{ margin: "4px 0 0", fontSize: 12,
-          color: trendColor, fontFamily: PBI.font }}>
+        <p
+          style={{
+            margin: "4px 0 0",
+            fontSize: 12,
+            color: trendColor,
+            fontFamily: PBI.font,
+          }}
+        >
           {trend}
         </p>
       )}

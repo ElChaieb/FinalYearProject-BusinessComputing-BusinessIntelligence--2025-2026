@@ -17,10 +17,11 @@
 import { useState, useEffect, useRef } from "react";
 import { fetchDashboard } from "../api/dashboardApi";
 
+// Generic hook: fetch dashboard endpoints and manage loading/error state
 export function useDashboard(path, params = {}) {
-  const [data,    setData]    = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
 
   // Stable serialisation of params so the effect only fires when values change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -28,8 +29,8 @@ export function useDashboard(path, params = {}) {
     Object.fromEntries(
       Object.entries(params)
         .filter(([, v]) => v != null)
-        .sort(([a], [b]) => a.localeCompare(b))
-    )
+        .sort(([a], [b]) => a.localeCompare(b)),
+    ),
   );
 
   // Track whether this effect instance is still current

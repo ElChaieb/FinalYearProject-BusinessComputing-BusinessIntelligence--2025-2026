@@ -47,6 +47,7 @@ def get_engine():
 
 # ── Enhanced Schema Introspection ───────────────────────────────────────────────
 
+# Build a detailed summary of the public schema (columns, FKs, samples)
 def get_detailed_schema_summary() -> Dict[str, Any]:
     """
     Returns detailed schema information including:
@@ -135,6 +136,7 @@ def get_detailed_schema_summary() -> Dict[str, Any]:
     
     return schema_info
 
+# Return a compact textual schema summary suitable for inclusion in LLM prompts
 def get_schema_summary(max_tables: int = 40) -> str:
     """Returns compact text description for LLM prompt"""
     schema_info = get_detailed_schema_summary()
@@ -142,6 +144,7 @@ def get_schema_summary(max_tables: int = 40) -> str:
 
 # ── Query Analysis and Optimization ───────────────────────────────────────────
 
+# Utility class that analyzes SQL and suggests optimizations
 class QueryAnalyzer:
     """Analyzes and optimizes SQL queries before execution"""
     
@@ -193,6 +196,7 @@ DANGEROUS_KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
+# Check whether a SQL statement is a safe single SELECT and return feedback
 def is_safe_sql(sql: str) -> tuple[bool, str]:
     """Enhanced safety check with detailed feedback"""
     stripped = sql.strip().rstrip(";")
@@ -234,7 +238,7 @@ def is_safe_sql(sql: str) -> tuple[bool, str]:
 # ── Enhanced LLM Prompts ───────────────────────────────────────────────────────
 
 async def llm_with_retry(prompt: str, timeout: int = 60, retries: int = 2) -> str:
-    """LLM call with retry logic"""
+    """Call the LLM with retries and return the cleaned response"""
     for attempt in range(retries):
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -341,6 +345,9 @@ Columns:
   sale_date   DATE                          — when the sale happened
   quantity    INT                           — number of units sold
   final_price NUMERIC                       — actual sale price (after negotiation)
+  
+  IMPORTANT: fact_sales has NO deleted column. Never add WHERE fact_sales.deleted = FALSE.
+  Only fact_opportunities and fact_quotes have a deleted column.'''
 
 === RELATIONSHIPS ===
 fact_sales.user_id    → dim_user.user_id
@@ -364,6 +371,7 @@ Active records:   WHERE deleted = FALSE
 """
 
 
+# Convert a natural language question to a safe SQL query using the annotated schema
 async def nl_to_sql(question: str, schema: str = "", conversation_history: List[Dict] = None) -> str:
     """Convert natural language to SQL with rich annotated schema context"""
     

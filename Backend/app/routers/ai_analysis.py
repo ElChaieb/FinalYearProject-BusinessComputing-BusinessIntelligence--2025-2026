@@ -51,6 +51,7 @@ logger.info(f"Current working directory: {os.getcwd()}")
 logger.info(f"Directory contents of /app: {os.listdir('/app') if os.path.exists('/app') else 'N/A'}")
 logger.info(f"Directory contents of /app/etl: {os.listdir('/app/etl') if os.path.exists('/app/etl') else 'N/A'}")
 
+# Business rules that define mandatory sheets and columns for validation
 BUSINESS_RULES = """
 Each uploaded Excel file must contain two mandatory sheets: 'OP' and 'DEVIS'.
 
@@ -87,6 +88,7 @@ A file is REJECTED when:
 """
 
 
+# Attempt to read Excel headers using openpyxl
 def _read_with_openpyxl(fpath):
     """Read Excel file using openpyxl (standard method)"""
     try:
@@ -107,6 +109,7 @@ def _read_with_openpyxl(fpath):
         raise
 
 
+# Fallback reader using pandas to extract sheet headers
 def _read_with_pandas(fpath):
     """Read Excel file using pandas as fallback"""
     try:
@@ -130,6 +133,7 @@ def _read_with_pandas(fpath):
         raise
 
 
+# Last-resort reader that opens the xlsx as a zip to list sheets
 def _read_as_zip(fpath):
     """Last resort: open as raw zip to at least get sheet names"""
     try:
@@ -146,6 +150,7 @@ def _read_as_zip(fpath):
         raise
 
 
+# Read and summarize all rejected Excel files for AI analysis
 def read_rejected_files():
     """Read all rejected Excel files from the rejected directory"""
     results = []
@@ -227,6 +232,7 @@ def read_rejected_files():
     return results
 
 
+# Endpoint: analyze rejected files using the LLM and return guidance
 @router.get("/ai/analyze-rejected")
 async def analyze_rejected():
     """Analyze rejected Excel files and provide AI-powered feedback"""
@@ -338,6 +344,7 @@ Response language: English
         )
 
 
+# AI service health-check endpoint to verify dependencies and connectivity
 @router.get("/ai/health")
 async def ai_health_check():
     """Health check endpoint for AI analysis service"""

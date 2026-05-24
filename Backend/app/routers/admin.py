@@ -4,7 +4,7 @@ import shutil
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from app.auth import require_role
 from app.config import RAW_DIR_STR, PROCESSED_DIR_STR, REJECTED_DIR_STR
-from etl.pipeline.file_processor import process_file, process_all_raw_files
+from etl.pipeline.file_processor import process_all_raw_files
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -15,9 +15,10 @@ REJECTED_DIR  = REJECTED_DIR_STR
 for folder in [RAW_DIR, PROCESSED_DIR, REJECTED_DIR]:
     os.makedirs(folder, exist_ok=True)
 
-_SUMMARY_TABLES = ["users", "vehicles", "clients", "opportunities", "quotes"]
+_SUMMARY_TABLES = ["users", "vehicles", "clients", "opportunities", "quotes", "sales"]
 
 
+# Return simple metadata about an Excel file (filename, agency, size)
 def file_info(filepath: str) -> dict:
     import re
     filename = os.path.basename(filepath)
@@ -29,6 +30,7 @@ def file_info(filepath: str) -> dict:
 
 # ── Excel ETL endpoints ──────────────────────────────────────
 
+# List raw uploaded Excel files in the raw directory
 @router.get("/data/files")
 def list_raw_files(current_user=Depends(require_role("Administrateur BI"))):
     files = [
@@ -39,6 +41,7 @@ def list_raw_files(current_user=Depends(require_role("Administrateur BI"))):
     return {"count": len(files), "files": [file_info(f) for f in files]}
 
 
+# List files that have been processed by the ETL
 @router.get("/data/processed")
 def list_processed_files(current_user=Depends(require_role("Administrateur BI"))):
     files = [
@@ -49,6 +52,7 @@ def list_processed_files(current_user=Depends(require_role("Administrateur BI"))
     return {"count": len(files), "files": [file_info(f) for f in files]}
 
 
+# List files that were rejected by ETL validation
 @router.get("/data/rejected")
 def list_rejected_files(current_user=Depends(require_role("Administrateur BI"))):
     files = [
@@ -59,6 +63,7 @@ def list_rejected_files(current_user=Depends(require_role("Administrateur BI")))
     return {"count": len(files), "files": [file_info(f) for f in files]}
 
 
+# Upload one or more Excel files into the raw directory
 @router.post("/data/upload")
 def upload_files(
     files: list[UploadFile] = File(...),
@@ -83,6 +88,7 @@ def upload_files(
     }
 
 
+# Trigger ETL processing for all files in the raw directory
 @router.post("/data/run")
 def run_etl(current_user=Depends(require_role("Administrateur BI"))):
     files = [
@@ -122,13 +128,10 @@ def run_etl(current_user=Depends(require_role("Administrateur BI"))):
 
 # ── OpDB → DWH sync endpoint ─────────────────────────────────
 
+# Manually trigger a synchronization from OpDB to the DWH
 @router.post("/opdb/sync")
 def sync_opdb(current_user=Depends(require_role("Administrateur BI"))):
-    """
-    Manually trigger an OpDB → DWH sync.
-    Returns inserted/skipped counts per table.
-    If nothing is new, total_inserted = 0 (not an error).
-    """
+    """Manually trigger an OpDB → DWH sync and return summary counts."""
     try:
         from etl.opdb_sync.sync_engine import sync_opdb_to_dwh
         result = sync_opdb_to_dwh()

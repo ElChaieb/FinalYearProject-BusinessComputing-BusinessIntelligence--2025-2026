@@ -1,4 +1,5 @@
 // app_frontend/src/pages/Directors/DirectorChat.jsx
+// Director chat page exposes the AI data assistant for natural language queries
 import DWChatPanel from "../../components/DWChatPanel";
 import Layout from "../../components/Layout";
 

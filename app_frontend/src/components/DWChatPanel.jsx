@@ -3,27 +3,32 @@ import { useState, useRef, useEffect } from "react";
 import axiosInstance from "../api/axios";
 
 // ── A single message bubble ────────────────────────────────────────────────────
+// Individual chat message bubble (user or assistant)
 function Message({ msg }) {
   const [showSQL, setShowSQL] = useState(false);
   const isUser = msg.role === "user";
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: isUser ? "flex-end" : "flex-start",
-      marginBottom: "16px",
-    }}>
-      <div style={{
-        maxWidth: "88%",
-        background: isUser ? "#111827" : "#f9fafb",
-        color: isUser ? "#fff" : "#1f2937",
-        border: isUser ? "none" : "1px solid #e5e7eb",
-        borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-        padding: "12px 16px",
-        fontSize: "14px",
-        lineHeight: "1.6",
-      }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: isUser ? "flex-end" : "flex-start",
+        marginBottom: "16px",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "88%",
+          background: isUser ? "#111827" : "#f9fafb",
+          color: isUser ? "#fff" : "#1f2937",
+          border: isUser ? "none" : "1px solid #e5e7eb",
+          borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+          padding: "12px 16px",
+          fontSize: "14px",
+          lineHeight: "1.6",
+        }}
+      >
         {msg.text}
       </div>
 
@@ -32,7 +37,7 @@ function Message({ msg }) {
         <div style={{ maxWidth: "88%", marginTop: "8px" }}>
           {/* Toggle SQL */}
           <button
-            onClick={() => setShowSQL(v => !v)}
+            onClick={() => setShowSQL((v) => !v)}
             style={{
               background: "none",
               border: "1px solid #e5e7eb",
@@ -48,40 +53,59 @@ function Message({ msg }) {
           </button>
 
           {showSQL && (
-            <pre style={{
-              background: "#1e1e2e",
-              color: "#cdd6f4",
-              borderRadius: "8px",
-              padding: "12px 16px",
-              fontSize: "12px",
-              overflowX: "auto",
-              margin: "0 0 8px 0",
-            }}>
+            <pre
+              style={{
+                background: "#1e1e2e",
+                color: "#cdd6f4",
+                borderRadius: "8px",
+                padding: "12px 16px",
+                fontSize: "12px",
+                overflowX: "auto",
+                margin: "0 0 8px 0",
+              }}
+            >
               {msg.data.sql}
             </pre>
           )}
 
           {/* Results table */}
           {msg.data.rows && msg.data.rows.length > 0 && (
-            <div style={{
-              border: "1px solid #e5e7eb",
-              borderRadius: "8px",
-              overflow: "hidden",
-              maxHeight: "260px",
-              overflowY: "auto",
-            }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                overflow: "hidden",
+                maxHeight: "260px",
+                overflowY: "auto",
+              }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "12px",
+                }}
+              >
                 <thead>
-                  <tr style={{ background: "#f3f4f6", position: "sticky", top: 0 }}>
-                    {msg.data.columns.map(col => (
-                      <th key={col} style={{
-                        padding: "6px 10px",
-                        textAlign: "left",
-                        fontWeight: 600,
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                        whiteSpace: "nowrap",
-                      }}>
+                  <tr
+                    style={{
+                      background: "#f3f4f6",
+                      position: "sticky",
+                      top: 0,
+                    }}
+                  >
+                    {msg.data.columns.map((col) => (
+                      <th
+                        key={col}
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "left",
+                          fontWeight: 600,
+                          color: "#374151",
+                          borderBottom: "1px solid #e5e7eb",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {col}
                       </th>
                     ))}
@@ -89,18 +113,28 @@ function Message({ msg }) {
                 </thead>
                 <tbody>
                   {msg.data.rows.map((row, i) => (
-                    <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f9fafb" }}>
+                    <tr
+                      key={i}
+                      style={{ background: i % 2 === 0 ? "#fff" : "#f9fafb" }}
+                    >
                       {row.map((cell, j) => (
-                        <td key={j} style={{
-                          padding: "5px 10px",
-                          color: "#374151",
-                          borderBottom: "1px solid #f3f4f6",
-                          whiteSpace: "nowrap",
-                          maxWidth: "220px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}>
-                          {cell === null ? <span style={{ color: "#9ca3af" }}>null</span> : String(cell)}
+                        <td
+                          key={j}
+                          style={{
+                            padding: "5px 10px",
+                            color: "#374151",
+                            borderBottom: "1px solid #f3f4f6",
+                            whiteSpace: "nowrap",
+                            maxWidth: "220px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {cell === null ? (
+                            <span style={{ color: "#9ca3af" }}>null</span>
+                          ) : (
+                            String(cell)
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -108,14 +142,17 @@ function Message({ msg }) {
                 </tbody>
               </table>
               {msg.data.total_rows > msg.data.rows.length && (
-                <div style={{
-                  padding: "6px 10px",
-                  fontSize: "11px",
-                  color: "#9ca3af",
-                  background: "#f9fafb",
-                  borderTop: "1px solid #e5e7eb",
-                }}>
-                  Showing first {msg.data.rows.length} of {msg.data.total_rows} rows
+                <div
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: "11px",
+                    color: "#9ca3af",
+                    background: "#f9fafb",
+                    borderTop: "1px solid #e5e7eb",
+                  }}
+                >
+                  Showing first {msg.data.rows.length} of {msg.data.total_rows}{" "}
+                  rows
                 </div>
               )}
             </div>
@@ -135,6 +172,7 @@ const SUGGESTIONS = [
 ];
 
 // ── Main panel ─────────────────────────────────────────────────────────────────
+// Main chat panel UI that sends natural language to the DW LLM
 export default function DWChatPanel() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -148,14 +186,14 @@ export default function DWChatPanel() {
   const ask = async (question) => {
     if (!question.trim() || loading) return;
     const userMsg = { role: "user", text: question };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
     try {
       const res = await axiosInstance.post("/ai/query-dw", { question });
       const d = res.data;
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
@@ -164,8 +202,9 @@ export default function DWChatPanel() {
         },
       ]);
     } catch (err) {
-      const detail = err.response?.data?.detail || "Failed to reach the AI service.";
-      setMessages(prev => [
+      const detail =
+        err.response?.data?.detail || "Failed to reach the AI service.";
+      setMessages((prev) => [
         ...prev,
         { role: "assistant", text: `⚠️ ${detail}` },
       ]);
@@ -184,50 +223,77 @@ export default function DWChatPanel() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div style={{
-      background: "#fff",
-      border: "1.5px solid #e5e7eb",
-      borderRadius: "12px",
-      marginTop: "24px",
-      fontFamily: "inherit",
-      display: "flex",
-      flexDirection: "column",
-      height: "520px",
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: "16px 20px",
-        borderBottom: "1px solid #f3f4f6",
+    <div
+      style={{
+        background: "#fff",
+        border: "1.5px solid #e5e7eb",
+        borderRadius: "12px",
+        marginTop: "24px",
+        fontFamily: "inherit",
         display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        flexShrink: 0,
-      }}>
+        flexDirection: "column",
+        height: "520px",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: "1px solid #f3f4f6",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          flexShrink: 0,
+        }}
+      >
         <span style={{ fontSize: "22px", lineHeight: 1 }}>🗄️</span>
         <div>
-          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 600, color: "#111827" }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
             Ask your data warehouse
           </h3>
           <p style={{ margin: 0, fontSize: "12px", color: "#9ca3af" }}>
-            Ask questions in plain English — SQL is generated and run automatically.
+            Ask questions in plain English — SQL is generated and run
+            automatically.
           </p>
         </div>
       </div>
 
       {/* Chat area */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "20px",
-      }}>
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "20px",
+        }}
+      >
         {isEmpty && (
-          <div style={{ textAlign: "center", color: "#9ca3af", paddingTop: "20px" }}>
+          <div
+            style={{
+              textAlign: "center",
+              color: "#9ca3af",
+              paddingTop: "20px",
+            }}
+          >
             <div style={{ fontSize: "28px", marginBottom: "12px" }}>💬</div>
             <p style={{ fontSize: "14px", margin: "0 0 20px" }}>
               Try asking something like:
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
-              {SUGGESTIONS.map(s => (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "8px",
+                justifyContent: "center",
+              }}
+            >
+              {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => ask(s)}
@@ -248,19 +314,31 @@ export default function DWChatPanel() {
           </div>
         )}
 
-        {messages.map((msg, i) => <Message key={i} msg={msg} />)}
+        {messages.map((msg, i) => (
+          <Message key={i} msg={msg} />
+        ))}
 
         {loading && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#9ca3af", fontSize: "13px" }}>
-            <span style={{
-              display: "inline-block",
-              width: "12px",
-              height: "12px",
-              border: "2px solid #e5e7eb",
-              borderTopColor: "#6b7280",
-              borderRadius: "50%",
-              animation: "spin 0.7s linear infinite",
-            }} />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: "#9ca3af",
+              fontSize: "13px",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: "12px",
+                height: "12px",
+                border: "2px solid #e5e7eb",
+                borderTopColor: "#6b7280",
+                borderRadius: "50%",
+                animation: "spin 0.7s linear infinite",
+              }}
+            />
             Thinking…
           </div>
         )}
@@ -269,16 +347,18 @@ export default function DWChatPanel() {
       </div>
 
       {/* Input */}
-      <div style={{
-        padding: "12px 16px",
-        borderTop: "1px solid #f3f4f6",
-        display: "flex",
-        gap: "8px",
-        flexShrink: 0,
-      }}>
+      <div
+        style={{
+          padding: "12px 16px",
+          borderTop: "1px solid #f3f4f6",
+          display: "flex",
+          gap: "8px",
+          flexShrink: 0,
+        }}
+      >
         <textarea
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Ask a question about your data…"
           rows={1}

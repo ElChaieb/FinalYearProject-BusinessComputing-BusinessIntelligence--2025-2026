@@ -55,6 +55,7 @@ def _dwh():
     )
 
 
+# Run a SQL query against the DWH and return rows as dictionaries
 def _query(sql: str, params: tuple = ()) -> list[dict]:
     conn = _dwh()
     try:
@@ -65,6 +66,7 @@ def _query(sql: str, params: tuple = ()) -> list[dict]:
         conn.close()
 
 
+# Run a SQL query and return the first row or empty dict
 def _one(sql: str, params: tuple = ()) -> dict:
     rows = _query(sql, params)
     return rows[0] if rows else {}
@@ -72,11 +74,13 @@ def _one(sql: str, params: tuple = ()) -> dict:
 
 # ── Auth helpers ───────────────────────────────────────────────────────────────
 
+# Ensure the requesting user has a global role (Director/BI)
 def _require_global(user):
     if user.role not in GLOBAL_ROLES:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
 
+# Lookup DWH user_id for a given application user email
 def _get_dwh_user_id(email: str) -> Optional[int]:
     row = _one("SELECT user_id FROM dim_user WHERE email = %s", (email,))
     return row.get("user_id")
@@ -145,6 +149,7 @@ def _category_model_revenue(year_n: int, extra_where: str = "", params: tuple = 
 
 # ── /dashboard/global/revenue/* ───────────────────────────────────────────────
 
+# Global endpoint: monthly revenue for directors (cross-agency)
 @router.get("/global/revenue/monthly")
 def global_revenue_monthly(
     year: int = Query(default=None),
@@ -164,6 +169,7 @@ def global_revenue_monthly(
     return {"year_n": year, "rows": rows}
 
 
+# Global endpoint: revenue broken down by category and model
 @router.get("/global/revenue/by-category")
 def global_revenue_by_category(
     year: int = Query(default=None),
@@ -183,6 +189,7 @@ def global_revenue_by_category(
     return {"year_n": year, "rows": rows}
 
 
+# Global endpoint: per-agency monthly revenue (Director view)
 @router.get("/global/revenue/by-agency")
 def global_revenue_by_agency(
     year: int = Query(default=None),
@@ -210,6 +217,7 @@ def global_revenue_by_agency(
 
 # ── /dashboard/agency/revenue/* ───────────────────────────────────────────────
 
+# Agency-scoped monthly revenue for agency managers
 @router.get("/agency/revenue/monthly")
 def agency_revenue_monthly(
     year: int = Query(default=None),
@@ -220,6 +228,7 @@ def agency_revenue_monthly(
     return {"year_n": year, "agency": user.agency_name, "rows": rows}
 
 
+# Agency-scoped revenue by category for agency managers
 @router.get("/agency/revenue/by-category")
 def agency_revenue_by_category(
     year: int = Query(default=None),
@@ -230,6 +239,7 @@ def agency_revenue_by_category(
     return {"year_n": year, "agency": user.agency_name, "rows": rows}
 
 
+# Agency-scoped revenue by commercial (salesperson) for dashboard cards
 @router.get("/agency/revenue/by-commercial")
 def agency_revenue_by_commercial(
     year: int = Query(default=None),
@@ -259,6 +269,7 @@ def agency_revenue_by_commercial(
 
 # ── /dashboard/me/revenue/* ───────────────────────────────────────────────────
 
+# Logged-in commercial: monthly revenue for the current user
 @router.get("/me/revenue/monthly")
 def me_revenue_monthly(
     year: int = Query(default=None),
@@ -272,6 +283,7 @@ def me_revenue_monthly(
     return {"year_n": year, "rows": rows}
 
 
+# Logged-in commercial: revenue by category for the current user
 @router.get("/me/revenue/by-category")
 def me_revenue_by_category(
     year: int = Query(default=None),
@@ -285,6 +297,7 @@ def me_revenue_by_category(
     return {"year_n": year, "rows": rows}
 
 
+# Logged-in commercial: scalar KPIs (totals, monthly figures, win rate)
 @router.get("/me/revenue/kpis")
 def me_revenue_kpis(
     year: int = Query(default=None),
@@ -352,6 +365,7 @@ def me_revenue_kpis(
     }
 
 
+# Logged-in commercial: recent sales rows for 'Recent Deals' table
 @router.get("/me/revenue/recent-sales")
 def me_recent_sales(
     limit: int = Query(default=10, le=50),
@@ -568,6 +582,7 @@ def _funnel_by_user(year_n: int, extra_where: str = "", params: tuple = ()):
 
 # ── /dashboard/global/funnel/* ────────────────────────────────────────────────
 
+# Global funnel monthly endpoint for directors
 @router.get("/global/funnel/monthly")
 def global_funnel_monthly(
     year: int = Query(default=None),
@@ -587,6 +602,7 @@ def global_funnel_monthly(
     return {"year_n": year, "rows": rows}
 
 
+# Global funnel totals by agency for director donut cards
 @router.get("/global/funnel/by-agency")
 def global_funnel_by_agency(
     year: int = Query(default=None),
@@ -600,6 +616,7 @@ def global_funnel_by_agency(
         params=())
 
 
+# Agency funnel monthly endpoint for agency managers
 @router.get("/agency/funnel/monthly")
 def agency_funnel_monthly(
     year: int = Query(default=None),
@@ -612,6 +629,7 @@ def agency_funnel_monthly(
     return {"year_n": year, "agency": user.agency_name, "rows": rows}
 
 
+# Agency funnel breakdown by commercial for agency dashboard
 @router.get("/agency/funnel/by-commercial")
 def agency_funnel_by_commercial(
     year: int = Query(default=None),
@@ -622,6 +640,10 @@ def agency_funnel_by_commercial(
     return _funnel_by_user(year,
         extra_where="AND agency_name = %s",
         params=(user.agency_name,))
+
+
+
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -676,6 +698,7 @@ def _client_by_state(year_n: int, month: int, extra_where: str = "", params: tup
                         TUNISIA_STATES) + params)
 
 
+# Global trends: units sold by category/model for directors
 @router.get("/global/trends/by-category")
 def global_trends_by_category(
     year: int = Query(default=None),
@@ -695,6 +718,7 @@ def global_trends_by_category(
     return {"year_n": year, "rows": rows}
 
 
+# Global trends: units sold per governorate for a given month
 @router.get("/global/trends/clients-by-state")
 def global_trends_clients_by_state(
     year: int = Query(default=None),
@@ -721,6 +745,7 @@ def global_trends_clients_by_state(
     return {"year_n": year, "month": month, "rows": rows}
 
 
+# Agency trends by category for agency managers
 @router.get("/agency/trends/by-category")
 def agency_trends_by_category(
     year: int = Query(default=None),
@@ -733,6 +758,7 @@ def agency_trends_by_category(
     return {"year_n": year, "agency": user.agency_name, "rows": rows}
 
 
+# Agency trends per governorate for agency managers
 @router.get("/agency/trends/clients-by-state")
 def agency_trends_clients_by_state(
     year: int = Query(default=None),
@@ -748,6 +774,11 @@ def agency_trends_clients_by_state(
     return {"year_n": year, "month": month, "agency": user.agency_name, "rows": rows}
 
 
+
+
+
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  SECTION 4 — FILTER OPTIONS
 #
@@ -756,6 +787,7 @@ def agency_trends_clients_by_state(
 #  These endpoints return the distinct values present in the DWH.
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# Global filters endpoint returning selectable filter values
 @router.get("/global/filters")
 def global_filters(user=Depends(get_current_user)):
     _require_global(user)
@@ -775,6 +807,7 @@ def global_filters(user=Depends(get_current_user)):
     }
 
 
+# Return commercials (salespeople) who have sales in the given agency
 @router.get("/global/filters/commercials")
 def global_filters_commercials(
     agency_name: str = Query(...),
@@ -795,6 +828,7 @@ def global_filters_commercials(
     return {"commercials": [{"id": r["user_id"], "name": r["full_name"]} for r in rows]}
 
 
+# Agency-scoped filter values for agency dashboards
 @router.get("/agency/filters")
 def agency_filters(user=Depends(get_current_user)):
     categories = _query(
@@ -825,6 +859,7 @@ def agency_filters(user=Depends(get_current_user)):
     }
 
 
+# Filter values scoped to the logged-in commercial
 @router.get("/me/filters")
 def me_filters(user=Depends(get_current_user)):
     uid = _get_dwh_user_id(user.email)

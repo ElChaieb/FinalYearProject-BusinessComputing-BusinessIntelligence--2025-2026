@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 
+// Login page handling authentication and redirect based on user role
 const ROLE_HOME = {
-  "Administrateur BI":   "/directors/revenue",
-  "General Director":    "/directors/revenue",
+  "Administrateur BI": "/directors/revenue",
+  "General Director": "/directors/revenue",
   "Commercial Director": "/directors/revenue",
-  "Agency Manager":      "/agency/revenue",
-  "Commercial":          "/commercial/revenue",
+  "Agency Manager": "/agency/revenue",
+  Commercial: "/commercial/revenue",
 };
 
 export default function Login() {
@@ -64,7 +65,9 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
               type="email"
               value={email}
@@ -75,7 +78,9 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
             <input
               type="password"
               value={password}

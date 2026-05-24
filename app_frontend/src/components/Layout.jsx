@@ -3,9 +3,10 @@
 import Sidebar from "./Sidebar";
 import { useSidebar } from "../context/SidebarContext";
 
-export const SIDEBAR_OPEN_W   = 220;
+export const SIDEBAR_OPEN_W = 220;
 export const SIDEBAR_CLOSED_W = 64;
 
+// Layout wrapper that positions the fixed Sidebar and content area
 export default function Layout({ children, style }) {
   const { isOpen } = useSidebar();
   const sidebarW = isOpen ? SIDEBAR_OPEN_W : SIDEBAR_CLOSED_W;
@@ -27,7 +28,8 @@ export default function Layout({ children, style }) {
           minHeight: "100vh",
           overflowX: "hidden",
           boxSizing: "border-box",
-          transition: "margin-left 0.22s cubic-bezier(.4,0,.2,1), width 0.22s cubic-bezier(.4,0,.2,1)",
+          transition:
+            "margin-left 0.22s cubic-bezier(.4,0,.2,1), width 0.22s cubic-bezier(.4,0,.2,1)",
           ...style,
         }}
       >

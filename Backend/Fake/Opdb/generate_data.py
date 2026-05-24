@@ -61,7 +61,7 @@ DB_PORT     = os.getenv("OPDB_PORT",     "1433")
 DB_NAME     = os.getenv("OPDB_NAME",     "OperationalDB")
 DB_USER     = os.getenv("OPDB_USER",     "sa")
 DB_PASSWORD = os.getenv("OPDB_PASSWORD", "")
-DB_DRIVER   = os.getenv("OPDB_DRIVER",   "ODBC Driver 17 for SQL Server")
+DB_DRIVER   = os.getenv("OPDB_DRIVER",   "ODBC Driver 18 for SQL Server")
 
 
 # ─── helpers ─────────────────────────────────────────────────────────────────

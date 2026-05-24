@@ -14,21 +14,25 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 # ── Schemas ───────────────────────────────────────────────────
+# Schema for creating a new user (admin endpoint)
 class CreateUserRequest(BaseModel):
     name:        str
     email:       str
     role:        str
     agency_name: str | None = None
 
+# Schema for password change requests
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
 
+# Schema for updating user profile (name)
 class UpdateProfileRequest(BaseModel):
     name: str
 
 
 # ── Login  (US-01) ────────────────────────────────────────────
+# Authenticate user and return a JWT access token
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
@@ -46,6 +50,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 
 # ── Change password  (US-03) ──────────────────────────────────
+# Allow authenticated user to change their own password
 @router.put("/change-password")
 def change_password(
     data: ChangePasswordRequest,
@@ -60,6 +65,7 @@ def change_password(
 
 
 # ── View & update profile  (US-04) ───────────────────────────
+# Update current user's profile (name)
 @router.put("/profile")
 def update_profile(
     data: UpdateProfileRequest,
@@ -72,6 +78,7 @@ def update_profile(
 
 
 # ── Admin: create user  (US-05) ──────────────────────────────
+# Admin endpoint to create a new application user and email credentials
 @router.post("/users/create")
 def create_user(
     data: CreateUserRequest,
@@ -100,6 +107,7 @@ def create_user(
 
 
 # ── Admin: list all users  (US-07) ────────────────────────────
+# Admin endpoint to list all application users
 @router.get("/users")
 def list_users(
     db: Session = Depends(get_db),
@@ -122,6 +130,7 @@ def list_users(
 
 
 # ── Admin: enable / disable user  (US-06) ────────────────────
+# Admin endpoint to enable/disable a user account
 @router.patch("/users/{user_id}/toggle")
 def toggle_user(
     user_id: int,
@@ -141,6 +150,7 @@ def toggle_user(
 
 
 # ── Admin: reset another user's password  (US-08) ────────────
+# Admin endpoint to reset another user's password and email it
 @router.post("/users/{user_id}/reset-password")
 def reset_password(
     user_id: int,

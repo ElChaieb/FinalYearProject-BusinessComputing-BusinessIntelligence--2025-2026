@@ -18,9 +18,18 @@ const THIS_YEAR = new Date().getFullYear();
 
 /** Pick a colour for each agency / commercial by index */
 const PALETTE = [
-  "#118DFF", "#E66C37", "#12239E", "#ECC846",
-  "#00B5D0", "#8764B8", "#D13438", "#107C10",
-  "#00B294", "#F2C80F", "#5F6B6D", "#8AD4EB",
+  "#118DFF",
+  "#E66C37",
+  "#12239E",
+  "#ECC846",
+  "#00B5D0",
+  "#8764B8",
+  "#D13438",
+  "#107C10",
+  "#00B294",
+  "#F2C80F",
+  "#5F6B6D",
+  "#8AD4EB",
 ];
 
 export function paletteColor(idx) {
@@ -40,13 +49,27 @@ function _globalParams(year, agencyName, commercialId) {
 }
 
 /** Monthly revenue totals + n-1 for all agencies combined */
-export function useGlobalRevenueMonthly(year = THIS_YEAR, agencyName = null, commercialId = null) {
-  return useDashboard("/dashboard/global/revenue/monthly", _globalParams(year, agencyName, commercialId));
+export function useGlobalRevenueMonthly(
+  year = THIS_YEAR,
+  agencyName = null,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/global/revenue/monthly",
+    _globalParams(year, agencyName, commercialId),
+  );
 }
 
 /** Category × model × month revenue breakdown */
-export function useGlobalRevenueByCategory(year = THIS_YEAR, agencyName = null, commercialId = null) {
-  return useDashboard("/dashboard/global/revenue/by-category", _globalParams(year, agencyName, commercialId));
+export function useGlobalRevenueByCategory(
+  year = THIS_YEAR,
+  agencyName = null,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/global/revenue/by-category",
+    _globalParams(year, agencyName, commercialId),
+  );
 }
 
 /** Per-agency monthly revenue (for donut cards) — always unfiltered */
@@ -55,8 +78,15 @@ export function useGlobalRevenueByAgency(year = THIS_YEAR) {
 }
 
 /** Monthly funnel rows (oppo / quote / sale won & lost) */
-export function useGlobalFunnelMonthly(year = THIS_YEAR, agencyName = null, commercialId = null) {
-  return useDashboard("/dashboard/global/funnel/monthly", _globalParams(year, agencyName, commercialId));
+export function useGlobalFunnelMonthly(
+  year = THIS_YEAR,
+  agencyName = null,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/global/funnel/monthly",
+    _globalParams(year, agencyName, commercialId),
+  );
 }
 
 /** Per-agency yearly funnel totals (donut cards) — always unfiltered */
@@ -65,13 +95,28 @@ export function useGlobalFunnelByAgency(year = THIS_YEAR) {
 }
 
 /** Category × model × month units sold */
-export function useGlobalTrendsByCategory(year = THIS_YEAR, agencyName = null, commercialId = null) {
-  return useDashboard("/dashboard/global/trends/by-category", _globalParams(year, agencyName, commercialId));
+export function useGlobalTrendsByCategory(
+  year = THIS_YEAR,
+  agencyName = null,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/global/trends/by-category",
+    _globalParams(year, agencyName, commercialId),
+  );
 }
 
 /** Units sold per Tunisian governorate for a given month */
-export function useGlobalTrendsClientsByState(year = THIS_YEAR, month = new Date().getMonth() + 1, agencyName = null, commercialId = null) {
-  return useDashboard("/dashboard/global/trends/clients-by-state", { ..._globalParams(year, agencyName, commercialId), month });
+export function useGlobalTrendsClientsByState(
+  year = THIS_YEAR,
+  month = new Date().getMonth() + 1,
+  agencyName = null,
+  commercialId = null,
+) {
+  return useDashboard("/dashboard/global/trends/clients-by-state", {
+    ..._globalParams(year, agencyName, commercialId),
+    month,
+  });
 }
 
 /** Filter options (categories, agencies, years) */
@@ -91,36 +136,89 @@ function _agencyParams(year, commercialId) {
 }
 
 export function useAgencyRevenueMonthly(year = THIS_YEAR, commercialId = null) {
-  return useDashboard("/dashboard/agency/revenue/monthly", _agencyParams(year, commercialId));
+  return useDashboard(
+    "/dashboard/agency/revenue/monthly",
+    _agencyParams(year, commercialId),
+  );
 }
 
-export function useAgencyRevenueByCategory(year = THIS_YEAR, commercialId = null) {
-  return useDashboard("/dashboard/agency/revenue/by-category", _agencyParams(year, commercialId));
+// Agency-scoped monthly revenue hook for agency managers
+
+export function useAgencyRevenueByCategory(
+  year = THIS_YEAR,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/agency/revenue/by-category",
+    _agencyParams(year, commercialId),
+  );
 }
 
-export function useAgencyRevenueByCommercial(year = THIS_YEAR, commercialId = null) {
-  return useDashboard("/dashboard/agency/revenue/by-commercial", _agencyParams(year, commercialId));
+// Agency-scoped revenue by category hook for agency managers
+
+export function useAgencyRevenueByCommercial(
+  year = THIS_YEAR,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/agency/revenue/by-commercial",
+    _agencyParams(year, commercialId),
+  );
 }
+
+// Agency-scoped revenue per commercial (salesperson) hook
 
 export function useAgencyFunnelMonthly(year = THIS_YEAR, commercialId = null) {
-  return useDashboard("/dashboard/agency/funnel/monthly", _agencyParams(year, commercialId));
+  return useDashboard(
+    "/dashboard/agency/funnel/monthly",
+    _agencyParams(year, commercialId),
+  );
 }
 
-export function useAgencyFunnelByCommercial(year = THIS_YEAR, commercialId = null) {
-  return useDashboard("/dashboard/agency/funnel/by-commercial", _agencyParams(year, commercialId));
+// Agency-scoped monthly funnel hook (opps/quotes/sales)
+
+export function useAgencyFunnelByCommercial(
+  year = THIS_YEAR,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/agency/funnel/by-commercial",
+    _agencyParams(year, commercialId),
+  );
 }
 
-export function useAgencyTrendsByCategory(year = THIS_YEAR, commercialId = null) {
-  return useDashboard("/dashboard/agency/trends/by-category", _agencyParams(year, commercialId));
+// Agency funnel breakdown by commercial for donut cards
+
+export function useAgencyTrendsByCategory(
+  year = THIS_YEAR,
+  commercialId = null,
+) {
+  return useDashboard(
+    "/dashboard/agency/trends/by-category",
+    _agencyParams(year, commercialId),
+  );
 }
 
-export function useAgencyTrendsClientsByState(year = THIS_YEAR, month = new Date().getMonth() + 1, commercialId = null) {
-  return useDashboard("/dashboard/agency/trends/clients-by-state", { ..._agencyParams(year, commercialId), month });
+// Agency trends by category hook for agency managers
+
+export function useAgencyTrendsClientsByState(
+  year = THIS_YEAR,
+  month = new Date().getMonth() + 1,
+  commercialId = null,
+) {
+  return useDashboard("/dashboard/agency/trends/clients-by-state", {
+    ..._agencyParams(year, commercialId),
+    month,
+  });
 }
+
+// Agency units-by-state hook for the selected month
 
 export function useAgencyFilters() {
   return useDashboard("/dashboard/agency/filters");
 }
+
+// Agency-scoped filter values hook (categories, commercials, years)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  COMMERCIAL (me-scoped) hooks
@@ -130,21 +228,31 @@ export function useMeRevenueMonthly(year = THIS_YEAR) {
   return useDashboard("/dashboard/me/revenue/monthly", { year });
 }
 
+// Current user's monthly revenue hook
+
 export function useMeRevenueByCategory(year = THIS_YEAR) {
   return useDashboard("/dashboard/me/revenue/by-category", { year });
 }
+
+// Current user's revenue-by-category hook
 
 export function useMeRevenueKpis(year = THIS_YEAR) {
   return useDashboard("/dashboard/me/revenue/kpis", { year });
 }
 
+// Current user's KPI hook (totals, monthly, win rate)
+
 export function useMeRecentSales(limit = 10) {
   return useDashboard("/dashboard/me/revenue/recent-sales", { limit });
 }
 
+// Current user's recent sales hook (limited rows)
+
 export function useMeFilters() {
   return useDashboard("/dashboard/me/filters");
 }
+
+// Filter values scoped to the logged-in commercial
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  DATA TRANSFORM HELPERS
@@ -152,7 +260,20 @@ export function useMeFilters() {
 //  components already expect (category → models → months[]).
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const MONTHS_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_ABBR = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 /**
  * Transform /revenue/by-category or /trends/by-category rows into
@@ -174,22 +295,22 @@ export function buildCategories(rows = [], isRevenue = true) {
       const colorIdx = catOrder.length;
       catOrder.push(row.category);
       catMap[row.category] = {
-        id:     row.category.toLowerCase().replace(/\s+/g, "_"),
-        label:  row.category,
-        color:  paletteColor(colorIdx),
+        id: row.category.toLowerCase().replace(/\s+/g, "_"),
+        label: row.category,
+        color: paletteColor(colorIdx),
         models: {},
       };
     }
     const cat = catMap[row.category];
     if (!cat.models[row.model]) {
       cat.models[row.model] = {
-        model:  row.model,
+        model: row.model,
         months: Array.from({ length: 12 }, () => ({ n: 0, nMinus1: 0 })),
       };
     }
     // month from API is 1-indexed
     const mi = (row.month ?? 1) - 1;
-    cat.models[row.model].months[mi].n       += Number(row.n       ?? 0);
+    cat.models[row.model].months[mi].n += Number(row.n ?? 0);
     cat.models[row.model].months[mi].nMinus1 += Number(row.n_minus1 ?? 0);
   }
 
@@ -207,11 +328,15 @@ export function buildCategories(rows = [], isRevenue = true) {
  * @param {string} nameKey  - field name for the entity label
  * @param {string} idKey    - field name for the entity id (optional)
  */
-export function buildEntityRevenue(rows = [], nameKey = "agency_name", idKey = null) {
+export function buildEntityRevenue(
+  rows = [],
+  nameKey = "agency_name",
+  idKey = null,
+) {
   if (!rows.length) return [];
 
   const order = [];
-  const map   = {};
+  const map = {};
 
   for (const row of rows) {
     const name = row[nameKey];
@@ -219,14 +344,14 @@ export function buildEntityRevenue(rows = [], nameKey = "agency_name", idKey = n
     if (!map[name]) {
       order.push(name);
       map[name] = {
-        id:     idKey ? row[idKey] : name.toLowerCase().replace(/\s+/g, "_"),
-        label:  name,
-        color:  paletteColor(order.length - 1),
+        id: idKey ? row[idKey] : name.toLowerCase().replace(/\s+/g, "_"),
+        label: name,
+        color: paletteColor(order.length - 1),
         months: Array.from({ length: 12 }, () => ({ n: 0, nMinus1: 0 })),
       };
     }
     const mi = (row.month ?? 1) - 1;
-    map[name].months[mi].n       += Number(row.n       ?? 0);
+    map[name].months[mi].n += Number(row.n ?? 0);
     map[name].months[mi].nMinus1 += Number(row.n_minus1 ?? 0);
   }
 
@@ -242,13 +367,13 @@ export function buildEntityRevenue(rows = [], nameKey = "agency_name", idKey = n
  */
 export function buildFunnelData(rows = []) {
   return rows.map((r) => ({
-    period:    r.period,
-    oppoWon:   Number(r.oppo_won   ?? 0),
-    oppoLost:  Number(r.oppo_lost  ?? 0),
-    quoteWon:  Number(r.quote_won  ?? 0),
+    period: r.period,
+    oppoWon: Number(r.oppo_won ?? 0),
+    oppoLost: Number(r.oppo_lost ?? 0),
+    quoteWon: Number(r.quote_won ?? 0),
     quoteLost: Number(r.quote_lost ?? 0),
-    saleWon:   Number(r.sale_won   ?? 0),
-    saleLost:  Number(r.sale_lost  ?? 0),
+    saleWon: Number(r.sale_won ?? 0),
+    saleLost: Number(r.sale_lost ?? 0),
   }));
 }
 
@@ -262,14 +387,14 @@ export function buildFunnelData(rows = []) {
 export function buildFunnelByEntity(apiResult = {}) {
   const map = (arr = []) =>
     arr.map((r) => ({
-      name:      r.full_name ?? r.agency_name ?? "",
-      oppoWon:   Number(r.oppo_won   ?? 0),
-      oppoLost:  Number(r.oppo_lost  ?? 0),
-      quoteWon:  Number(r.quote_won  ?? 0),
+      name: r.full_name ?? r.agency_name ?? "",
+      oppoWon: Number(r.oppo_won ?? 0),
+      oppoLost: Number(r.oppo_lost ?? 0),
+      quoteWon: Number(r.quote_won ?? 0),
       quoteLost: Number(r.quote_lost ?? 0),
     }));
   return {
-    yearN:   map(apiResult.year_n   ?? []),
+    yearN: map(apiResult.year_n ?? []),
     yearNm1: map(apiResult.year_nm1 ?? []),
   };
 }
@@ -287,9 +412,9 @@ export function buildStateOrders(rows = [], yearKey = "n") {
   return rows
     .filter((r) => r.city)
     .map((r, i) => ({
-      id:        `state_${r.city.toLowerCase().replace(/\s+/g, "_")}`,
-      label:     r.city,
-      orders:    Number(r[yearKey] ?? 0),
+      id: `state_${r.city.toLowerCase().replace(/\s+/g, "_")}`,
+      label: r.city,
+      orders: Number(r[yearKey] ?? 0),
       ordersNm1: Number(r.n_minus1 ?? 0),
     }));
 }

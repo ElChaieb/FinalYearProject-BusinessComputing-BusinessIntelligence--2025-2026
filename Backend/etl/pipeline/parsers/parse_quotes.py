@@ -128,20 +128,12 @@ def parse_and_load_quotes(df_devis: pd.DataFrame, df_sales: pd.DataFrame | None 
                 cur.execute(
                     "SELECT 1 FROM fact_opportunities WHERE oppo_id = %s", (oppo_id,)
                 )
-                exists = cur.fetchone() is not None
-                oppo_cache[oppo_id] = False if exists else None
+                oppo_cache[oppo_id] = cur.fetchone() is not None
 
-            if oppo_cache[oppo_id] is None:
+            if not oppo_cache[oppo_id]:
                 logger.warning(
                     f"  quote {quote_id}: oppo_id {oppo_id} not found "
                     "in fact_opportunities — skipping."
-                )
-                report["skipped"] += 1
-                continue
-
-            if oppo_cache[oppo_id] is True:
-                logger.debug(
-                    f"  quote {quote_id}: oppo_id {oppo_id} already has a quote — skipping."
                 )
                 report["skipped"] += 1
                 continue
@@ -187,7 +179,6 @@ def parse_and_load_quotes(df_devis: pd.DataFrame, df_sales: pd.DataFrame | None 
                 ),
             )
             report["inserted"] += 1
-            oppo_cache[oppo_id] = True
 
         conn.commit()
         logger.info(
