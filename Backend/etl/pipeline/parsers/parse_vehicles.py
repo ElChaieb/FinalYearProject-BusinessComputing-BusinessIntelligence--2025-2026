@@ -3,15 +3,27 @@
 Extracts unique vehicles from DEVIS sheet and upserts into dim_vehicle.
 
 Column mapping (source → DWH):
-  AR_Ref    → dim_vehicle.ar_ref      (PK — direct from source)
-  AR_Design → dim_vehicle.ar_design
-  Marque    → dim_vehicle.brand
-  Modèle    → dim_vehicle.model
+    AR_Ref    → dim_vehicle.ar_ref      (PK — direct from source)
+    AR_Design → dim_vehicle.ar_design
+    Marque    → dim_vehicle.brand
+    Modèle    → dim_vehicle.model
 
 Faked columns (no source equivalent — looked up from VEHICLE_CATALOGUE,
 then defaulted if ar_ref not found):
-  category   → dim_vehicle.category   (e.g. "SUV", "Citadine", "Électrique"…)
-  base_price → dim_vehicle.base_price
+    category   → dim_vehicle.category   (e.g. "SUV", "Citadine", "Électrique"…)
+    base_price → dim_vehicle.base_price
+
+Business rules:
+    - Only rows with a non-null `AR_Ref` are considered; duplicates by `AR_Ref`
+        are removed before database actions.
+    - If a vehicle `ar_ref` already exists in `dim_vehicle`, the row is skipped
+        (no update is performed by this parser).
+    - `category` and `base_price` are derived from an internal catalogue
+        (_CATALOGUE). If exact match fails, prefix matching is attempted. If no
+        match, defaults (`Inconnu`, NULL) are used.
+    - Values are cleaned (trimmed/title-cased) before insertion.
+    - Inserts are committed as a single transaction; on error the transaction
+        is rolled back and the exception re-raised.
 """
 import pandas as pd
 from etl.utils.db import get_connection
@@ -132,6 +144,8 @@ _DEFAULT_BASE_PRICE = None   # NULL — honestly unknown is better than a wrong 
 
 
 def _lookup(ar_ref: str) -> tuple[str, float | None]:
+    # Business rule: resolve category/base_price using exact then prefix
+    # matching; fall back to defaults if nothing matches.
     """Return (category, base_price) from catalogue, with safe defaults."""
     entry = _CATALOGUE.get(ar_ref)
     if entry:
@@ -145,6 +159,8 @@ def _lookup(ar_ref: str) -> tuple[str, float | None]:
 
 
 def parse_and_load_vehicles(df_devis: pd.DataFrame) -> dict:
+    # Main parser: deduplicate, skip existing ar_ref and insert new vehicles.
+    # Returns a report dict summarizing rows processed.
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
     if "AR_Ref" not in df_devis.columns:
@@ -201,6 +217,7 @@ def parse_and_load_vehicles(df_devis: pd.DataFrame) -> dict:
 
 
 def _clean(val) -> str | None:
+    # Helper: normalize string values to Title Case and strip whitespace.
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return None
     return str(val).strip().title() or None

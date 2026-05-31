@@ -3,23 +3,31 @@
 Loads opportunities from the OP sheet into fact_opportunities.
 
 deleted semantics (DWH business rule — NOT the CRM source value):
-  deleted=TRUE  → opportunity did not lead to any quote
-  deleted=FALSE → opportunity led to at least one quote  ("won")
+    deleted=TRUE  → opportunity did not lead to any quote
+    deleted=FALSE → opportunity led to at least one quote  ("won")
 
 All opportunities are inserted with deleted=TRUE. After parse_and_load_quotes()
 commits, mark_won_opportunities() flips deleted=FALSE on every opportunity
 that now has at least one linked quote in fact_quotes.
 
 Column mapping:
-  Oppo_OpportunityId  → fact_opportunities.oppo_id
-  Chan_Description    → fact_opportunities.agency_name
-  Oppo_CreatedDate    → fact_opportunities.created_date
-  Oppo_AssignedUserId → fact_opportunities.user_id        (FK → dim_user, direct)
-  Comp_Name           → dim_client.full_name
-  Addr_City           → dim_client.city
-  Emai_EmailAddress   → dim_client.email
-  comp_reference      → fact_opportunities.client_reference
-  (Oppo_Deleted intentionally ignored — deleted is derived, not sourced)
+    Oppo_OpportunityId  → fact_opportunities.oppo_id
+    Chan_Description    → fact_opportunities.agency_name
+    Oppo_CreatedDate    → fact_opportunities.created_date
+    Oppo_AssignedUserId → fact_opportunities.user_id        (FK → dim_user, direct)
+    Comp_Name           → dim_client.full_name
+    Addr_City           → dim_client.city
+    Emai_EmailAddress   → dim_client.email
+    comp_reference      → fact_opportunities.client_reference
+    (Oppo_Deleted intentionally ignored — deleted is derived, not sourced)
+
+Business rules:
+    - Only rows with a valid numeric `Oppo_OpportunityId` are processed.
+    - Duplicate opportunity IDs are ignored (first occurrence kept).
+    - Every new opportunity is inserted with `deleted=TRUE` by default.
+    - Client rows are resolved/created via `get_or_create_client()` using the
+        same DB cursor so client creation participates in the same transaction.
+    - Dates are parsed with day-first convention; invalid dates become NULL.
 """
 import pandas as pd
 from etl.pipeline.parsers.parse_clients import get_or_create_client
@@ -28,6 +36,8 @@ from etl.utils.logger import logger
 
 
 def parse_and_load_opportunities(df_op: pd.DataFrame) -> dict:
+    # Parse OP sheet, deduplicate by Oppo_OpportunityId, resolve client/user
+    # and insert new rows into `fact_opportunities` with deleted=TRUE.
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
     df = (
@@ -105,6 +115,8 @@ def parse_and_load_opportunities(df_op: pd.DataFrame) -> dict:
 
 
 def mark_won_opportunities() -> int:
+    # Business rule: mark opportunities as won (deleted=FALSE) when at least
+    # one quote exists in `fact_quotes`. This runs after quotes commit.
     """
     Flip deleted=FALSE on every opportunity that has at least one linked quote.
     Called from parse_quotes after its transaction commits so the new rows

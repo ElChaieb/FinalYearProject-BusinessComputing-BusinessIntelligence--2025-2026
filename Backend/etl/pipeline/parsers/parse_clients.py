@@ -3,19 +3,26 @@
 Extracts clients from the OP sheet and upserts them into dim_client.
 
 ID strategy:
-  - client_id is SERIAL (auto-increment in PostgreSQL). There is NO client ID
-    in the source files — a new ID is generated on every INSERT.
+    - client_id is SERIAL (auto-increment in PostgreSQL). There is NO client ID
+        in the source files — a new ID is generated on every INSERT.
 
 Deduplication key: (UPPER(TRIM(full_name)), LOWER(TRIM(email)))
-  - If email is NULL, dedup falls back to name only.
+    - If email is NULL, dedup falls back to name only.
 
 get_or_create_client() uses the caller's cursor so it participates
 in the same transaction as the opportunity insert.
 
 Column mapping:
-  Comp_Name           → dim_client.full_name
-  Emai_EmailAddress   → dim_client.email
-  Addr_City           → dim_client.city
+    Comp_Name           → dim_client.full_name
+    Emai_EmailAddress   → dim_client.email
+    Addr_City           → dim_client.city
+
+Business rules:
+    - Empty or missing full name means the client is not created (returns None).
+    - Deduplication prefers exact match on (upper-trimmed name, lower-trimmed
+        email). If email is missing, match is performed by name with NULL email.
+    - Inserts return the generated `client_id` to be used within the same
+        transaction (caller-provided cursor).
 """
 import pandas as pd
 from etl.utils.logger import logger
@@ -27,10 +34,9 @@ def get_or_create_client(
     email,
     city,
 ) -> int | None:
-    """
-    Look up or insert a client. Returns client_id (auto-generated) or None
-    if full_name is empty.
-    """
+    
+    # Look up an existing client by dedup keys, or insert and return id.
+    # Returns `client_id` or `None` when `full_name` is empty.
     name_clean  = _normalize_name(full_name)
     email_clean = _normalize_email(email)
     city_clean  = _normalize_city(city)
@@ -79,6 +85,7 @@ def get_or_create_client(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _normalize_name(val) -> str | None:
+    # Normalize name for deduplication: strip and uppercase.
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return None
     cleaned = str(val).strip().upper()
@@ -86,6 +93,7 @@ def _normalize_name(val) -> str | None:
 
 
 def _normalize_email(val) -> str | None:
+    # Normalize email for deduplication: strip and lowercase.
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return None
     cleaned = str(val).strip().lower()
@@ -93,6 +101,7 @@ def _normalize_email(val) -> str | None:
 
 
 def _normalize_city(val) -> str | None:
+    # Normalize city for insertion: strip and title-case.
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return None
     cleaned = str(val).strip().title()

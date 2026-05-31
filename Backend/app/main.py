@@ -9,7 +9,16 @@ from app.routers.ai_analysis import router as ai_router
 from app.routers.dw_chat_router import router as dw_chat_router
 
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from app.scheduler import start_scheduler, stop_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_scheduler(interval_minutes=30)
+    yield
+    stop_scheduler()
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

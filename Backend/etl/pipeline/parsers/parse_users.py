@@ -3,22 +3,29 @@
 Extracts unique commercials from OP + DEVIS and upserts them into dim_user.
 
 ID strategy:
-  - user_id is read directly from the source file (Oppo_AssignedUserId / User_UserId).
-    There is NO crm_user_id indirection — the source ID is the DWH ID.
+    - user_id is read directly from the source file (Oppo_AssignedUserId / User_UserId).
+        There is NO crm_user_id indirection — the source ID is the DWH ID.
 
 Resolution priority (per row):
-  1. User_UserId in DEVIS (preferred — exact match on user_id)
-  2. (User_LastName, User_FirstName, agency_name) — fallback when User_UserId absent in DEVIS
+    1. User_UserId in DEVIS (preferred — exact match on user_id)
+    2. (User_LastName, User_FirstName, agency_name) — fallback when User_UserId absent in DEVIS
 
 Column mapping:
-  OP:    Oppo_AssignedUserId → user_id
-         User_LastName       → last_name
-         User_FirstName      → first_name
-         User_EmailAddress   → email
-         Chan_Description    → agency_name
-  DEVIS: User_UserId         → user_id
-         User_LastName       → last_name
-         User_FirstName      → first_name
+    OP:    Oppo_AssignedUserId → user_id
+                 User_LastName       → last_name
+                 User_FirstName      → first_name
+                 User_EmailAddress   → email
+                 Chan_Description    → agency_name
+    DEVIS: User_UserId         → user_id
+                 User_LastName       → last_name
+                 User_FirstName      → first_name
+
+Business rules:
+    - `user_id` from source is authoritative; inserts use that ID directly.
+    - Users are deduplicated in-memory by `user_id` before any DB writes.
+    - If DEVIS lacks `User_UserId`, name-based resolution is used for quotes
+        (no new users inserted from DEVIS without an ID).
+    - Inserted users receive role `Commercial`.
 """
 import pandas as pd
 from etl.utils.db import get_connection
@@ -26,6 +33,8 @@ from etl.utils.logger import logger
 
 
 def parse_and_load_users(df_op: pd.DataFrame, df_devis: pd.DataFrame) -> dict:
+    # Main loader: collects users from OP and DEVIS, deduplicates by
+    # `user_id` and inserts new rows into `dim_user` assigning role `Commercial`.
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
     # user_id → user data dict; deduplicated in memory before any DB write
@@ -118,6 +127,8 @@ def resolve_user_id_by_name(cur, last_name: str, first_name: str, agency_name: s
     Fallback: resolve dim_user.user_id by (last_name, first_name, agency_name).
     Used when DEVIS is missing User_UserId.
     """
+    # Business rule: when User_UserId is not available, resolve by exact
+    # case-insensitive match on (last_name, first_name, agency_name).
     if not last_name or not first_name:
         return None
     cur.execute(

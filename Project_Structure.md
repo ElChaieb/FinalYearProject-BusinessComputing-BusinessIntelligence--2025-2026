@@ -1,6 +1,6 @@
 # File Tree: app
 
-**Generated:** 5/19/2026, 6:20:42 PM
+**Generated:** 5/31/2026, 9:06:59 PM
 **Root Path:** `c:\Users\ElChaieb\Desktop\PFE\app`
 
 ```
@@ -12,7 +12,6 @@
 │   │   │   ├── generate_fake_sales.py
 │   │   │   └── log.txt
 │   │   ├── OpDB_init
-│   │   │   ├── raw
 │   │   │   └── load_to_opdb.py
 │   │   └── Opdb
 │   │       └── generate_data.py
@@ -44,7 +43,6 @@
 │   │   │   ├── parsers
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── parse_clients.py
-│   │   │   │   ├── parse_date.py
 │   │   │   │   ├── parse_opportunities.py
 │   │   │   │   ├── parse_quotes.py
 │   │   │   │   ├── parse_sales.py
@@ -67,6 +65,14 @@
 │   ├── app_db.sql
 │   ├── docker-compose.yml
 │   └── dwh.sql
+├── Useful_info
+│   ├── all_dashboard_paths.svg
+│   ├── bar_chart_journey.svg
+│   ├── cattotals_flatmap_reduce.svg
+│   ├── dashboard_data_flow.svg
+│   ├── hook_chain_total_revenue.svg
+│   ├── path_anatomy.svg
+│   └── useDashboard_lifecycle.svg
 ├── app_frontend
 │   ├── public
 │   │   └── Zouari.png
@@ -122,13 +128,14 @@
 │   ├── nginx.conf
 │   ├── package-lock.json
 │   ├── package.json
-│   ├── src.zip
 │   └── vite.config.js
 ├── etl
 │   └── logs
 ├── opdb_etl
 │   └── logs
 ├── .gitignore
+├── PS.xml
+├── Project_Structure.md
 ├── README.md
 ├── docker-compose.yml
 └── run_instructions.txt

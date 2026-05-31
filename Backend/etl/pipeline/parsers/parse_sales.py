@@ -8,15 +8,24 @@ parse_and_load_quotes() commits, since it looks up client_id and agency_name
 from fact_opportunities.
 
 Column mapping (SALES sheet → fact_sales):
-  quote_id    → fact_sales.quote_id    (PK — ON CONFLICT DO NOTHING)
-  oppo_id     → fact_sales.oppo_id
-  ar_ref      → fact_sales.ar_ref
-  user_id     → fact_sales.user_id
-  sale_date   → fact_sales.sale_date
-  quantity    → fact_sales.quantity
-  final_price → fact_sales.final_price
-  client_id   → looked up from fact_opportunities (no source equivalent)
-  agency_name → looked up from fact_opportunities (no source equivalent)
+    quote_id    → fact_sales.quote_id    (PK — ON CONFLICT DO NOTHING)
+    oppo_id     → fact_sales.oppo_id
+    ar_ref      → fact_sales.ar_ref
+    user_id     → fact_sales.user_id
+    sale_date   → fact_sales.sale_date
+    quantity    → fact_sales.quantity
+    final_price → fact_sales.final_price
+    client_id   → looked up from fact_opportunities (no source equivalent)
+    agency_name → looked up from fact_opportunities (no source equivalent)
+
+Business rules:
+    - Parser must run after quotes are committed because it looks up
+        `client_id` and `agency_name` from `fact_opportunities`.
+    - Rows with a non-numeric or missing `quote_id` are skipped.
+    - Insertion uses `ON CONFLICT (quote_id) DO NOTHING` to avoid duplicates.
+    - If `quantity` is missing or invalid, it defaults to 1.
+    - `client_id` and `agency_name` are retrieved from the linked opportunity
+        when `oppo_id` is present.
 """
 import pandas as pd
 
@@ -25,6 +34,8 @@ from etl.utils.logger import logger
 
 
 def parse_and_load_sales(df_sales: pd.DataFrame | None) -> dict:
+    # Main loader for SALES sheet; looks up related opportunity info and
+    # inserts into `fact_sales` with conflict-handling.
     report = {"total": 0, "inserted": 0, "skipped": 0, "errors": 0}
 
     if df_sales is None or df_sales.empty:
@@ -109,6 +120,7 @@ def _safe_int(val):
 
 
 def _clean(val) -> str | None:
+    # Normalize simple string values: strip and return None for empty.
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return None
     return str(val).strip() or None

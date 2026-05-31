@@ -1,0 +1,415 @@
+<svg width="1000" height="3450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: 'Arial', sans-serif; font-size: 18px; font-weight: bold; fill: #2c3e50; }
+      .subtitle { font-family: 'Arial', sans-serif; font-size: 12px; fill: #7f8c8d; }
+      .folder-text { font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; fill: #27ae60; font-weight: bold; }
+      .file-text { font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; fill: #3498db; }
+      .icon { font-family: 'Arial', sans-serif; font-size: 16px; }
+      .line { stroke: #bdc3c7; stroke-width: 1.5; }
+      .background { fill: #f8f9fa; }
+      .header-bg { fill: #ecf0f1; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="3450" class="background"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1000" height="60" class="header-bg"/>
+  <text x="20" y="25" class="title">📁 File Tree: app</text>
+  <text x="20" y="45" class="subtitle">Generated: 5/31/2026, 9:06:23 PM | FileTree Pro Extension</text>
+
+  <!-- Tree Structure -->
+    <line x1="15" y1="80" x2="25" y2="80" class="line"/>
+    <text x="30" y="85" class="folder-text">Backend/</text>
+    <line x1="45" y1="100" x2="45" y2="110" class="line"/>
+    <line x1="45" y1="110" x2="55" y2="110" class="line"/>
+    <text x="60" y="115" class="folder-text">Fake/</text>
+    <line x1="75" y1="130" x2="75" y2="140" class="line"/>
+    <line x1="75" y1="140" x2="85" y2="140" class="line"/>
+    <text x="90" y="145" class="folder-text">Excel/</text>
+    <line x1="105" y1="160" x2="105" y2="170" class="line"/>
+    <line x1="105" y1="170" x2="115" y2="170" class="line"/>
+    <text x="120" y="175" class="folder-text">raw/</text>
+    <line x1="135" y1="190" x2="135" y2="200" class="line"/>
+    <line x1="135" y1="200" x2="145" y2="200" class="line"/>
+    <text x="150" y="205" class="folder-text">output/</text>
+    <line x1="105" y1="260" x2="105" y2="270" class="line"/>
+    <line x1="105" y1="270" x2="115" y2="270" class="line"/>
+    <text x="120" y="275" class="file-text">generate_fake_sales.py</text>
+    <line x1="105" y1="295" x2="105" y2="305" class="line"/>
+    <line x1="105" y1="305" x2="115" y2="305" class="line"/>
+    <text x="120" y="310" class="file-text">log.txt</text>
+    <line x1="75" y1="365" x2="75" y2="375" class="line"/>
+    <line x1="75" y1="375" x2="85" y2="375" class="line"/>
+    <text x="90" y="380" class="folder-text">OpDB_init/</text>
+    <line x1="105" y1="395" x2="105" y2="405" class="line"/>
+    <line x1="105" y1="405" x2="115" y2="405" class="line"/>
+    <text x="120" y="410" class="file-text">load_to_opdb.py</text>
+    <line x1="75" y1="465" x2="75" y2="475" class="line"/>
+    <line x1="75" y1="475" x2="85" y2="475" class="line"/>
+    <text x="90" y="480" class="folder-text">Opdb/</text>
+    <line x1="105" y1="495" x2="105" y2="505" class="line"/>
+    <line x1="105" y1="505" x2="115" y2="505" class="line"/>
+    <text x="120" y="510" class="file-text">generate_data.py</text>
+    <line x1="45" y1="600" x2="45" y2="610" class="line"/>
+    <line x1="45" y1="610" x2="55" y2="610" class="line"/>
+    <text x="60" y="615" class="folder-text">app/</text>
+    <line x1="75" y1="630" x2="75" y2="640" class="line"/>
+    <line x1="75" y1="640" x2="85" y2="640" class="line"/>
+    <text x="90" y="645" class="folder-text">routers/</text>
+    <line x1="105" y1="660" x2="105" y2="670" class="line"/>
+    <line x1="105" y1="670" x2="115" y2="670" class="line"/>
+    <text x="120" y="675" class="file-text">__init__.py</text>
+    <line x1="105" y1="695" x2="105" y2="705" class="line"/>
+    <line x1="105" y1="705" x2="115" y2="705" class="line"/>
+    <text x="120" y="710" class="file-text">admin.py</text>
+    <line x1="105" y1="730" x2="105" y2="740" class="line"/>
+    <line x1="105" y1="740" x2="115" y2="740" class="line"/>
+    <text x="120" y="745" class="file-text">ai_analysis.py</text>
+    <line x1="105" y1="765" x2="105" y2="775" class="line"/>
+    <line x1="105" y1="775" x2="115" y2="775" class="line"/>
+    <text x="120" y="780" class="file-text">auth.py</text>
+    <line x1="105" y1="800" x2="105" y2="810" class="line"/>
+    <line x1="105" y1="810" x2="115" y2="810" class="line"/>
+    <text x="120" y="815" class="file-text">dashboard.py</text>
+    <line x1="105" y1="835" x2="105" y2="845" class="line"/>
+    <line x1="105" y1="845" x2="115" y2="845" class="line"/>
+    <text x="120" y="850" class="file-text">dw_chat_router.py</text>
+    <line x1="75" y1="905" x2="75" y2="915" class="line"/>
+    <line x1="75" y1="915" x2="85" y2="915" class="line"/>
+    <text x="90" y="920" class="folder-text">utils/</text>
+    <line x1="105" y1="935" x2="105" y2="945" class="line"/>
+    <line x1="105" y1="945" x2="115" y2="945" class="line"/>
+    <text x="120" y="950" class="file-text">__init__.py</text>
+    <line x1="105" y1="970" x2="105" y2="980" class="line"/>
+    <line x1="105" y1="980" x2="115" y2="980" class="line"/>
+    <text x="120" y="985" class="file-text">email.py</text>
+    <line x1="75" y1="1040" x2="75" y2="1050" class="line"/>
+    <line x1="75" y1="1050" x2="85" y2="1050" class="line"/>
+    <text x="90" y="1055" class="file-text">__init__.py</text>
+    <line x1="75" y1="1075" x2="75" y2="1085" class="line"/>
+    <line x1="75" y1="1085" x2="85" y2="1085" class="line"/>
+    <text x="90" y="1090" class="file-text">auth.py</text>
+    <line x1="75" y1="1110" x2="75" y2="1120" class="line"/>
+    <line x1="75" y1="1120" x2="85" y2="1120" class="line"/>
+    <text x="90" y="1125" class="file-text">config.py</text>
+    <line x1="75" y1="1145" x2="75" y2="1155" class="line"/>
+    <line x1="75" y1="1155" x2="85" y2="1155" class="line"/>
+    <text x="90" y="1160" class="file-text">database.py</text>
+    <line x1="75" y1="1180" x2="75" y2="1190" class="line"/>
+    <line x1="75" y1="1190" x2="85" y2="1190" class="line"/>
+    <text x="90" y="1195" class="file-text">hashedpass.py</text>
+    <line x1="75" y1="1215" x2="75" y2="1225" class="line"/>
+    <line x1="75" y1="1225" x2="85" y2="1225" class="line"/>
+    <text x="90" y="1230" class="file-text">main.py</text>
+    <line x1="75" y1="1250" x2="75" y2="1260" class="line"/>
+    <line x1="75" y1="1260" x2="85" y2="1260" class="line"/>
+    <text x="90" y="1265" class="file-text">models.py</text>
+    <line x1="75" y1="1285" x2="75" y2="1295" class="line"/>
+    <line x1="75" y1="1295" x2="85" y2="1295" class="line"/>
+    <text x="90" y="1300" class="file-text">scheduler.py</text>
+    <line x1="45" y1="1355" x2="45" y2="1365" class="line"/>
+    <line x1="45" y1="1365" x2="55" y2="1365" class="line"/>
+    <text x="60" y="1370" class="folder-text">etl/</text>
+    <line x1="75" y1="1385" x2="75" y2="1395" class="line"/>
+    <line x1="75" y1="1395" x2="85" y2="1395" class="line"/>
+    <text x="90" y="1400" class="folder-text">logs/</text>
+    <line x1="75" y1="1420" x2="75" y2="1430" class="line"/>
+    <line x1="75" y1="1430" x2="85" y2="1430" class="line"/>
+    <text x="90" y="1435" class="folder-text">opdb_sync/</text>
+    <line x1="105" y1="1450" x2="105" y2="1460" class="line"/>
+    <line x1="105" y1="1460" x2="115" y2="1460" class="line"/>
+    <text x="120" y="1465" class="file-text">__init__.py</text>
+    <line x1="105" y1="1485" x2="105" y2="1495" class="line"/>
+    <line x1="105" y1="1495" x2="115" y2="1495" class="line"/>
+    <text x="120" y="1500" class="file-text">sync_engine.py</text>
+    <line x1="75" y1="1555" x2="75" y2="1565" class="line"/>
+    <line x1="75" y1="1565" x2="85" y2="1565" class="line"/>
+    <text x="90" y="1570" class="folder-text">pipeline/</text>
+    <line x1="105" y1="1585" x2="105" y2="1595" class="line"/>
+    <line x1="105" y1="1595" x2="115" y2="1595" class="line"/>
+    <text x="120" y="1600" class="folder-text">parsers/</text>
+    <line x1="135" y1="1615" x2="135" y2="1625" class="line"/>
+    <line x1="135" y1="1625" x2="145" y2="1625" class="line"/>
+    <text x="150" y="1630" class="file-text">__init__.py</text>
+    <line x1="135" y1="1650" x2="135" y2="1660" class="line"/>
+    <line x1="135" y1="1660" x2="145" y2="1660" class="line"/>
+    <text x="150" y="1665" class="file-text">parse_clients.py</text>
+    <line x1="135" y1="1685" x2="135" y2="1695" class="line"/>
+    <line x1="135" y1="1695" x2="145" y2="1695" class="line"/>
+    <text x="150" y="1700" class="file-text">parse_opportunities.py</text>
+    <line x1="135" y1="1720" x2="135" y2="1730" class="line"/>
+    <line x1="135" y1="1730" x2="145" y2="1730" class="line"/>
+    <text x="150" y="1735" class="file-text">parse_quotes.py</text>
+    <line x1="135" y1="1755" x2="135" y2="1765" class="line"/>
+    <line x1="135" y1="1765" x2="145" y2="1765" class="line"/>
+    <text x="150" y="1770" class="file-text">parse_sales.py</text>
+    <line x1="135" y1="1790" x2="135" y2="1800" class="line"/>
+    <line x1="135" y1="1800" x2="145" y2="1800" class="line"/>
+    <text x="150" y="1805" class="file-text">parse_users.py</text>
+    <line x1="135" y1="1825" x2="135" y2="1835" class="line"/>
+    <line x1="135" y1="1835" x2="145" y2="1835" class="line"/>
+    <text x="150" y="1840" class="file-text">parse_vehicles.py</text>
+    <line x1="105" y1="1895" x2="105" y2="1905" class="line"/>
+    <line x1="105" y1="1905" x2="115" y2="1905" class="line"/>
+    <text x="120" y="1910" class="folder-text">validators/</text>
+    <line x1="135" y1="1925" x2="135" y2="1935" class="line"/>
+    <line x1="135" y1="1935" x2="145" y2="1935" class="line"/>
+    <text x="150" y="1940" class="file-text">__init__.py</text>
+    <line x1="135" y1="1960" x2="135" y2="1970" class="line"/>
+    <line x1="135" y1="1970" x2="145" y2="1970" class="line"/>
+    <text x="150" y="1975" class="file-text">schema_validator.py</text>
+    <line x1="105" y1="2030" x2="105" y2="2040" class="line"/>
+    <line x1="105" y1="2040" x2="115" y2="2040" class="line"/>
+    <text x="120" y="2045" class="file-text">__init__.py</text>
+    <line x1="105" y1="2065" x2="105" y2="2075" class="line"/>
+    <line x1="105" y1="2075" x2="115" y2="2075" class="line"/>
+    <text x="120" y="2080" class="file-text">file_processor.py</text>
+    <line x1="75" y1="2135" x2="75" y2="2145" class="line"/>
+    <line x1="75" y1="2145" x2="85" y2="2145" class="line"/>
+    <text x="90" y="2150" class="folder-text">utils/</text>
+    <line x1="105" y1="2165" x2="105" y2="2175" class="line"/>
+    <line x1="105" y1="2175" x2="115" y2="2175" class="line"/>
+    <text x="120" y="2180" class="file-text">__init__.py</text>
+    <line x1="105" y1="2200" x2="105" y2="2210" class="line"/>
+    <line x1="105" y1="2210" x2="115" y2="2210" class="line"/>
+    <text x="120" y="2215" class="file-text">db.py</text>
+    <line x1="105" y1="2235" x2="105" y2="2245" class="line"/>
+    <line x1="105" y1="2245" x2="115" y2="2245" class="line"/>
+    <text x="120" y="2250" class="file-text">logger.py</text>
+    <line x1="75" y1="2305" x2="75" y2="2315" class="line"/>
+    <line x1="75" y1="2315" x2="85" y2="2315" class="line"/>
+    <text x="90" y="2320" class="file-text">__init__.py</text>
+    <line x1="45" y1="2375" x2="45" y2="2385" class="line"/>
+    <line x1="45" y1="2385" x2="55" y2="2385" class="line"/>
+    <text x="60" y="2390" class="file-text">Dockerfile.api</text>
+    <line x1="45" y1="2410" x2="45" y2="2420" class="line"/>
+    <line x1="45" y1="2420" x2="55" y2="2420" class="line"/>
+    <text x="60" y="2425" class="file-text">requirements.txt</text>
+    <line x1="15" y1="2490" x2="25" y2="2490" class="line"/>
+    <text x="30" y="2495" class="folder-text">PFE_2026/</text>
+    <line x1="45" y1="2510" x2="45" y2="2520" class="line"/>
+    <line x1="45" y1="2520" x2="55" y2="2520" class="line"/>
+    <text x="60" y="2525" class="file-text">OPDB.sql</text>
+    <line x1="45" y1="2545" x2="45" y2="2555" class="line"/>
+    <line x1="45" y1="2555" x2="55" y2="2555" class="line"/>
+    <text x="60" y="2560" class="file-text">app_db.sql</text>
+    <line x1="45" y1="2580" x2="45" y2="2590" class="line"/>
+    <line x1="45" y1="2590" x2="55" y2="2590" class="line"/>
+    <text x="60" y="2595" class="file-text">docker-compose.yml</text>
+    <line x1="45" y1="2615" x2="45" y2="2625" class="line"/>
+    <line x1="45" y1="2625" x2="55" y2="2625" class="line"/>
+    <text x="60" y="2630" class="file-text">dwh.sql</text>
+    <line x1="15" y1="2695" x2="25" y2="2695" class="line"/>
+    <text x="30" y="2700" class="folder-text">Useful_info/</text>
+    <line x1="45" y1="2715" x2="45" y2="2725" class="line"/>
+    <line x1="45" y1="2725" x2="55" y2="2725" class="line"/>
+    <text x="60" y="2730" class="file-text">all_dashboard_paths.svg</text>
+    <line x1="45" y1="2750" x2="45" y2="2760" class="line"/>
+    <line x1="45" y1="2760" x2="55" y2="2760" class="line"/>
+    <text x="60" y="2765" class="file-text">bar_chart_journey.svg</text>
+    <line x1="45" y1="2785" x2="45" y2="2795" class="line"/>
+    <line x1="45" y1="2795" x2="55" y2="2795" class="line"/>
+    <text x="60" y="2800" class="file-text">cattotals_flatmap_reduce.svg</text>
+    <line x1="45" y1="2820" x2="45" y2="2830" class="line"/>
+    <line x1="45" y1="2830" x2="55" y2="2830" class="line"/>
+    <text x="60" y="2835" class="file-text">dashboard_data_flow.svg</text>
+    <line x1="45" y1="2855" x2="45" y2="2865" class="line"/>
+    <line x1="45" y1="2865" x2="55" y2="2865" class="line"/>
+    <text x="60" y="2870" class="file-text">hook_chain_total_revenue.svg</text>
+    <line x1="45" y1="2890" x2="45" y2="2900" class="line"/>
+    <line x1="45" y1="2900" x2="55" y2="2900" class="line"/>
+    <text x="60" y="2905" class="file-text">path_anatomy.svg</text>
+    <line x1="45" y1="2925" x2="45" y2="2935" class="line"/>
+    <line x1="45" y1="2935" x2="55" y2="2935" class="line"/>
+    <text x="60" y="2940" class="file-text">useDashboard_lifecycle.svg</text>
+    <line x1="15" y1="3005" x2="25" y2="3005" class="line"/>
+    <text x="30" y="3010" class="folder-text">app_frontend/</text>
+    <line x1="45" y1="3025" x2="45" y2="3035" class="line"/>
+    <line x1="45" y1="3035" x2="55" y2="3035" class="line"/>
+    <text x="60" y="3040" class="folder-text">public/</text>
+    <line x1="75" y1="3055" x2="75" y2="3065" class="line"/>
+    <line x1="75" y1="3065" x2="85" y2="3065" class="line"/>
+    <text x="90" y="3070" class="file-text">Zouari.png</text>
+    <line x1="45" y1="3125" x2="45" y2="3135" class="line"/>
+    <line x1="45" y1="3135" x2="55" y2="3135" class="line"/>
+    <text x="60" y="3140" class="folder-text">src/</text>
+    <line x1="75" y1="3155" x2="75" y2="3165" class="line"/>
+    <line x1="75" y1="3165" x2="85" y2="3165" class="line"/>
+    <text x="90" y="3170" class="folder-text">api/</text>
+    <line x1="105" y1="3185" x2="105" y2="3195" class="line"/>
+    <line x1="105" y1="3195" x2="115" y2="3195" class="line"/>
+    <text x="120" y="3200" class="file-text">axios.js</text>
+    <line x1="105" y1="3220" x2="105" y2="3230" class="line"/>
+    <line x1="105" y1="3230" x2="115" y2="3230" class="line"/>
+    <text x="120" y="3235" class="file-text">dashboardApi.js</text>
+    <line x1="75" y1="3290" x2="75" y2="3300" class="line"/>
+    <line x1="75" y1="3300" x2="85" y2="3300" class="line"/>
+    <text x="90" y="3305" class="folder-text">assets/</text>
+    <line x1="75" y1="3325" x2="75" y2="3335" class="line"/>
+    <line x1="75" y1="3335" x2="85" y2="3335" class="line"/>
+    <text x="90" y="3340" class="folder-text">components/</text>
+    <line x1="105" y1="3355" x2="105" y2="3365" class="line"/>
+    <line x1="105" y1="3365" x2="115" y2="3365" class="line"/>
+    <text x="120" y="3370" class="file-text">AIAnalysisPanel.jsx</text>
+    <line x1="105" y1="3390" x2="105" y2="3400" class="line"/>
+    <line x1="105" y1="3400" x2="115" y2="3400" class="line"/>
+    <text x="120" y="3405" class="file-text">AgencyFilterContext.jsx</text>
+    <line x1="105" y1="3425" x2="105" y2="3435" class="line"/>
+    <line x1="105" y1="3435" x2="115" y2="3435" class="line"/>
+    <text x="120" y="3440" class="file-text">AgencyFilterContext_states.jsx</text>
+    <line x1="105" y1="3460" x2="105" y2="3470" class="line"/>
+    <line x1="105" y1="3470" x2="115" y2="3470" class="line"/>
+    <text x="120" y="3475" class="file-text">Charts.jsx</text>
+    <line x1="105" y1="3495" x2="105" y2="3505" class="line"/>
+    <line x1="105" y1="3505" x2="115" y2="3505" class="line"/>
+    <text x="120" y="3510" class="file-text">CommercialFilterContext.jsx</text>
+    <line x1="105" y1="3530" x2="105" y2="3540" class="line"/>
+    <line x1="105" y1="3540" x2="115" y2="3540" class="line"/>
+    <text x="120" y="3545" class="file-text">CommercialFilterContext_states.jsx</text>
+    <line x1="105" y1="3565" x2="105" y2="3575" class="line"/>
+    <line x1="105" y1="3575" x2="115" y2="3575" class="line"/>
+    <text x="120" y="3580" class="file-text">DWChatPanel.jsx</text>
+    <line x1="105" y1="3600" x2="105" y2="3610" class="line"/>
+    <line x1="105" y1="3610" x2="115" y2="3610" class="line"/>
+    <text x="120" y="3615" class="file-text">FilterContext.jsx</text>
+    <line x1="105" y1="3635" x2="105" y2="3645" class="line"/>
+    <line x1="105" y1="3645" x2="115" y2="3645" class="line"/>
+    <text x="120" y="3650" class="file-text">FilterContext_states.jsx</text>
+    <line x1="105" y1="3670" x2="105" y2="3680" class="line"/>
+    <line x1="105" y1="3680" x2="115" y2="3680" class="line"/>
+    <text x="120" y="3685" class="file-text">Layout.jsx</text>
+    <line x1="105" y1="3705" x2="105" y2="3715" class="line"/>
+    <line x1="105" y1="3715" x2="115" y2="3715" class="line"/>
+    <text x="120" y="3720" class="file-text">ProtectedRoute.jsx</text>
+    <line x1="105" y1="3740" x2="105" y2="3750" class="line"/>
+    <line x1="105" y1="3750" x2="115" y2="3750" class="line"/>
+    <text x="120" y="3755" class="file-text">Sidebar.jsx</text>
+    <line x1="75" y1="3810" x2="75" y2="3820" class="line"/>
+    <line x1="75" y1="3820" x2="85" y2="3820" class="line"/>
+    <text x="90" y="3825" class="folder-text">context/</text>
+    <line x1="105" y1="3840" x2="105" y2="3850" class="line"/>
+    <line x1="105" y1="3850" x2="115" y2="3850" class="line"/>
+    <text x="120" y="3855" class="file-text">AuthContext.jsx</text>
+    <line x1="105" y1="3875" x2="105" y2="3885" class="line"/>
+    <line x1="105" y1="3885" x2="115" y2="3885" class="line"/>
+    <text x="120" y="3890" class="file-text">SidebarContext.jsx</text>
+    <line x1="75" y1="3945" x2="75" y2="3955" class="line"/>
+    <line x1="75" y1="3955" x2="85" y2="3955" class="line"/>
+    <text x="90" y="3960" class="folder-text">hooks/</text>
+    <line x1="105" y1="3975" x2="105" y2="3985" class="line"/>
+    <line x1="105" y1="3985" x2="115" y2="3985" class="line"/>
+    <text x="120" y="3990" class="file-text">dashboardHooks.js</text>
+    <line x1="105" y1="4010" x2="105" y2="4020" class="line"/>
+    <line x1="105" y1="4020" x2="115" y2="4020" class="line"/>
+    <text x="120" y="4025" class="file-text">useDashboard.js</text>
+    <line x1="75" y1="4080" x2="75" y2="4090" class="line"/>
+    <line x1="75" y1="4090" x2="85" y2="4090" class="line"/>
+    <text x="90" y="4095" class="folder-text">pages/</text>
+    <line x1="105" y1="4110" x2="105" y2="4120" class="line"/>
+    <line x1="105" y1="4120" x2="115" y2="4120" class="line"/>
+    <text x="120" y="4125" class="folder-text">Agency/</text>
+    <line x1="135" y1="4140" x2="135" y2="4150" class="line"/>
+    <line x1="135" y1="4150" x2="145" y2="4150" class="line"/>
+    <text x="150" y="4155" class="file-text">AgencyFunnel.jsx</text>
+    <line x1="135" y1="4175" x2="135" y2="4185" class="line"/>
+    <line x1="135" y1="4185" x2="145" y2="4185" class="line"/>
+    <text x="150" y="4190" class="file-text">AgencyRevenue.jsx</text>
+    <line x1="135" y1="4210" x2="135" y2="4220" class="line"/>
+    <line x1="135" y1="4220" x2="145" y2="4220" class="line"/>
+    <text x="150" y="4225" class="file-text">AgencyTrends.jsx</text>
+    <line x1="105" y1="4280" x2="105" y2="4290" class="line"/>
+    <line x1="105" y1="4290" x2="115" y2="4290" class="line"/>
+    <text x="120" y="4295" class="folder-text">Commercial/</text>
+    <line x1="135" y1="4310" x2="135" y2="4320" class="line"/>
+    <line x1="135" y1="4320" x2="145" y2="4320" class="line"/>
+    <text x="150" y="4325" class="file-text">CommercialRevenue.jsx</text>
+    <line x1="105" y1="4380" x2="105" y2="4390" class="line"/>
+    <line x1="105" y1="4390" x2="115" y2="4390" class="line"/>
+    <text x="120" y="4395" class="folder-text">Directors/</text>
+    <line x1="135" y1="4410" x2="135" y2="4420" class="line"/>
+    <line x1="135" y1="4420" x2="145" y2="4420" class="line"/>
+    <text x="150" y="4425" class="file-text">DirectorChat.jsx</text>
+    <line x1="135" y1="4445" x2="135" y2="4455" class="line"/>
+    <line x1="135" y1="4455" x2="145" y2="4455" class="line"/>
+    <text x="150" y="4460" class="file-text">DirectorFunnel.jsx</text>
+    <line x1="135" y1="4480" x2="135" y2="4490" class="line"/>
+    <line x1="135" y1="4490" x2="145" y2="4490" class="line"/>
+    <text x="150" y="4495" class="file-text">DirectorRevenue.jsx</text>
+    <line x1="135" y1="4515" x2="135" y2="4525" class="line"/>
+    <line x1="135" y1="4525" x2="145" y2="4525" class="line"/>
+    <text x="150" y="4530" class="file-text">DirectorTrends.jsx</text>
+    <line x1="105" y1="4585" x2="105" y2="4595" class="line"/>
+    <line x1="105" y1="4595" x2="115" y2="4595" class="line"/>
+    <text x="120" y="4600" class="file-text">Admin.jsx</text>
+    <line x1="105" y1="4620" x2="105" y2="4630" class="line"/>
+    <line x1="105" y1="4630" x2="115" y2="4630" class="line"/>
+    <text x="120" y="4635" class="file-text">DataManagement.jsx</text>
+    <line x1="105" y1="4655" x2="105" y2="4665" class="line"/>
+    <line x1="105" y1="4665" x2="115" y2="4665" class="line"/>
+    <text x="120" y="4670" class="file-text">Login.jsx</text>
+    <line x1="105" y1="4690" x2="105" y2="4700" class="line"/>
+    <line x1="105" y1="4700" x2="115" y2="4700" class="line"/>
+    <text x="120" y="4705" class="file-text">Profile.jsx</text>
+    <line x1="75" y1="4760" x2="75" y2="4770" class="line"/>
+    <line x1="75" y1="4770" x2="85" y2="4770" class="line"/>
+    <text x="90" y="4775" class="folder-text">utils/</text>
+    <line x1="75" y1="4795" x2="75" y2="4805" class="line"/>
+    <line x1="75" y1="4805" x2="85" y2="4805" class="line"/>
+    <text x="90" y="4810" class="file-text">App.jsx</text>
+    <line x1="75" y1="4830" x2="75" y2="4840" class="line"/>
+    <line x1="75" y1="4840" x2="85" y2="4840" class="line"/>
+    <text x="90" y="4845" class="file-text">index.css</text>
+    <line x1="75" y1="4865" x2="75" y2="4875" class="line"/>
+    <line x1="75" y1="4875" x2="85" y2="4875" class="line"/>
+    <text x="90" y="4880" class="file-text">main.jsx</text>
+    <line x1="45" y1="4935" x2="45" y2="4945" class="line"/>
+    <line x1="45" y1="4945" x2="55" y2="4945" class="line"/>
+    <text x="60" y="4950" class="file-text">.gitignore</text>
+    <line x1="45" y1="4970" x2="45" y2="4980" class="line"/>
+    <line x1="45" y1="4980" x2="55" y2="4980" class="line"/>
+    <text x="60" y="4985" class="file-text">Dockerfile.frontend</text>
+    <line x1="45" y1="5005" x2="45" y2="5015" class="line"/>
+    <line x1="45" y1="5015" x2="55" y2="5015" class="line"/>
+    <text x="60" y="5020" class="file-text">README.md</text>
+    <line x1="45" y1="5040" x2="45" y2="5050" class="line"/>
+    <line x1="45" y1="5050" x2="55" y2="5050" class="line"/>
+    <text x="60" y="5055" class="file-text">eslint.config.js</text>
+    <line x1="45" y1="5075" x2="45" y2="5085" class="line"/>
+    <line x1="45" y1="5085" x2="55" y2="5085" class="line"/>
+    <text x="60" y="5090" class="file-text">index.html</text>
+    <line x1="45" y1="5110" x2="45" y2="5120" class="line"/>
+    <line x1="45" y1="5120" x2="55" y2="5120" class="line"/>
+    <text x="60" y="5125" class="file-text">nginx.conf</text>
+    <line x1="45" y1="5145" x2="45" y2="5155" class="line"/>
+    <line x1="45" y1="5155" x2="55" y2="5155" class="line"/>
+    <text x="60" y="5160" class="file-text">package-lock.json</text>
+    <line x1="45" y1="5180" x2="45" y2="5190" class="line"/>
+    <line x1="45" y1="5190" x2="55" y2="5190" class="line"/>
+    <text x="60" y="5195" class="file-text">package.json</text>
+    <line x1="45" y1="5215" x2="45" y2="5225" class="line"/>
+    <line x1="45" y1="5225" x2="55" y2="5225" class="line"/>
+    <text x="60" y="5230" class="file-text">vite.config.js</text>
+    <line x1="15" y1="5295" x2="25" y2="5295" class="line"/>
+    <text x="30" y="5300" class="folder-text">etl/</text>
+    <line x1="45" y1="5315" x2="45" y2="5325" class="line"/>
+    <line x1="45" y1="5325" x2="55" y2="5325" class="line"/>
+    <text x="60" y="5330" class="folder-text">logs/</text>
+    <line x1="15" y1="5395" x2="25" y2="5395" class="line"/>
+    <text x="30" y="5400" class="folder-text">opdb_etl/</text>
+    <line x1="45" y1="5415" x2="45" y2="5425" class="line"/>
+    <line x1="45" y1="5425" x2="55" y2="5425" class="line"/>
+    <text x="60" y="5430" class="folder-text">logs/</text>
+    <line x1="15" y1="5495" x2="25" y2="5495" class="line"/>
+    <text x="30" y="5500" class="file-text">.gitignore</text>
+    <line x1="15" y1="5530" x2="25" y2="5530" class="line"/>
+    <text x="30" y="5535" class="file-text">Project_Structure.md</text>
+    <line x1="15" y1="5565" x2="25" y2="5565" class="line"/>
+    <text x="30" y="5570" class="file-text">README.md</text>
+    <line x1="15" y1="5600" x2="25" y2="5600" class="line"/>
+    <text x="30" y="5605" class="file-text">docker-compose.yml</text>
+    <line x1="15" y1="5635" x2="25" y2="5635" class="line"/>
+    <text x="30" y="5640" class="file-text">run_instructions.txt</text>
+</svg>
