@@ -73,10 +73,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      sqlserver:
-        condition: service_healthy
-      ollama:
-        condition: service_started
     restart: unless-stopped
 
   # --- React Frontend ---
