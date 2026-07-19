@@ -186,6 +186,39 @@ This project was developed as the final-year (PFE) capstone required to complete
 
 ---
 
-## Author
+## Screenshots
 
-**Hamdi Chaieb** — [LinkedIn] ·  · elchaiebhamdi@gmail.com
+<p align="center">
+  <p>Revenue Page:</p>
+  <img src="screenshots/Rev1.png" width="800" alt="Revenue page - part1">
+  <img src="screenshots/Rev1.png" width="800" alt="Revenue page - part2">
+</p>
+
+  <p>Funnel Page:</p>
+  <img src="screenshots/Funnel1.png" width="800" alt="Funnel page - part1">
+  <img src="screenshots/Funnel2.png" width="800" alt="Funnel page - part2">
+  <img src="screenshots/Funnel3.png" width="800" alt="Funnel page - part3">
+</p>
+
+<p align="center">
+  <p>Trends Page:</p>
+  <img src="screenshots/Trends1.png" width="800" alt="Trends page - part1">
+  <img src="screenshots/Trends1.png" width="800" alt="Trends page - part2">
+</p>
+
+<p align="center">
+  <p>Data Managment Page:</p>
+  <img src="screenshots/DM.png" width="800" alt="DataManagment page">
+</p>
+
+<p align="center">
+  <p>LLM Page:</p>
+  <img src="screenshots/LLM.png" width="800" alt="LLM page">
+</p>
+
+
+---
+
+##Author
+
+**Hamdi Chaieb** — [LinkedIn](https://www.linkedin.com/in/hamdi-elchaieb-162b5638b) · elchaiebhamdi@gmail.com
