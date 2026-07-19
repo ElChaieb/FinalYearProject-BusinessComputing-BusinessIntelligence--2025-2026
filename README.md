@@ -35,25 +35,25 @@ The company only provided raw CRM exports (opportunities and quotes) — there w
           │  upload / validate
           ▼
  ┌─────────────────────┐        ┌──────────────────────────┐
- │   ETL Pipeline        │──────▶│  Data Warehouse (Postgres) │
- │   (Python, pandas)    │       │  star schema               │
- └─────────────────────┘        └──────────────┬────────────┘
-          ▲                                     │
-          │ scheduled sync (every 30 min)       │ SQL
- ┌─────────────────────┐                        ▼
- │ Operational DB        │              ┌──────────────────┐
- │ (MS SQL Server)        │              │  FastAPI backend   │
- │ "Sage" ERP simulator   │              │  role-scoped REST   │
- └─────────────────────┘              │  + JWT auth          │
-                                        │  + NL→SQL AI chat    │
-                                        └────────┬────────────┘
+ │   ETL Pipeline      │──────▶│  Data Warehouse(Postgres)│
+ │   (Python, pandas)  │        │  star schema             │
+ └─────────────────────┘        └──────────────┬───────────┘
+          ▲                                    │
+          │ scheduled sync (every 30 min)      │ SQL
+ ┌─────────────────────┐                       ▼
+ │ Operational DB      │              ┌─────────────────────┐
+ │ (MS SQL Server)     │              │  FastAPI backend    │
+ │ "Sage" ERP simulator│              │  role-scoped REST   │
+ └─────────────────────┘              │  + JWT auth         │
+                                      │  + NL→SQL AI chat   │
+                                      └───────────┬─────────┘
                                                   │ JSON / axios
                                                   ▼
-                                        ┌──────────────────┐
-                                        │  React dashboard    │
-                                        │  (Recharts, role-    │
-                                        │  scoped views)        │
-                                        └──────────────────┘
+                                        ┌────────────────────┐
+                                        │  React dashboard   │
+                                        │  (Recharts, role-  │
+                                        │  scoped views)     │
+                                        └────────────────────┘
 ```
 
 A more detailed request-lifecycle diagram (DWH → FastAPI → cache layer → React hooks → charts) is included in [`Useful_info/dashboard_data_flow.svg`](./Useful_info/dashboard_data_flow.svg), along with several other architecture diagrams generated while documenting the system for the jury.
@@ -219,6 +219,6 @@ This project was developed as the final-year (PFE) capstone required to complete
 
 ---
 
-##Author
+## Author
 
 **Hamdi Chaieb** — [LinkedIn](https://www.linkedin.com/in/hamdi-elchaieb-162b5638b) · elchaiebhamdi@gmail.com
